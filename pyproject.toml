@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "api", "ui"]
+
+[project]
+name = "picture-python"
+version = "0.1.0"
+description = "PICTURE clinical analytics platform — Python port"
+requires-python = ">=3.11"
+dependencies = [
+    # Core data
+    "pandas>=2.0",
+    "pyarrow>=14.0",       # Parquet support (replaces R arrow)
+    "polars>=0.20",        # Optional fast alternative to pandas
+
+    # Statistics / analytics
+    "scipy>=1.11",
+    "lifelines>=0.27",     # Survival analysis (replaces R survminer)
+    "prophet>=1.1",        # Time-series forecasting (same package, Python port)
+
+    # Visualisation
+    "plotly>=5.18",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+
+    # Geospatial (replaces R sf / geosphere / leaflet)
+    "geopandas>=0.14",
+    "shapely>=2.0",
+    "folium>=0.15",
+
+    # Date/time (replaces R lubridate)
+    "python-dateutil>=2.8",
+
+    # API layer
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+
+    # UI layer (temporary — will be replaced by React)
+    "streamlit>=1.32",
+
+    # Config / utilities
+    "pyyaml>=6.0",
+    "structlog>=24.1",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",          # AsyncClient for FastAPI tests
+    "ruff>=0.3",
+    "mypy>=1.9",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true

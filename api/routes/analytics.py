@@ -1,0 +1,104 @@
+"""Analytics endpoints.
+
+Each endpoint:
+  1. Loads the requested RDV(s)
+  2. Resolves cohorts and applies them to the RDV
+  3. Runs the analytics module
+  4. Returns to_dict() as JSON
+
+Adding a new analytics method = add a new route here + a class in core/analytics/.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from api.deps import get_rdvs
+from api.schemas.analytics import FrequencyRequest, FrequencyResponse
+from core.analytics.frequency import FrequencyAnalysis
+from core.cohort.filters import apply_cohorts_to_rdv, resolve_cohort
+from core.cohort.models import cohort_definition_from_yaml
+
+router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+def _resolve_cohorts(cohort_definitions: list[dict], rdvs: dict):
+    """Helper: parse and resolve a list of cohort definition dicts."""
+    if not cohort_definitions:
+        return None  # single-cohort mode
+
+    resolved = []
+    for raw in cohort_definitions:
+        definition = cohort_definition_from_yaml(raw)
+        resolved.append(resolve_cohort(definition, rdvs))
+    return resolved
+
+
+@router.post("/frequency", response_model=FrequencyResponse)
+def frequency_analysis(
+    request: FrequencyRequest,
+    rdvs: dict = Depends(get_rdvs),
+):
+    """Run a frequency analysis on any categorical RDV column."""
+    if request.rdv not in rdvs:
+        raise HTTPException(status_code=404, detail=f"RDV '{request.rdv}' not available.")
+    if "pde" not in rdvs:
+        raise HTTPException(status_code=404, detail="Demographics RDV (pde) is required.")
+
+    cohorts = _resolve_cohorts(request.cohort_definitions, rdvs)
+
+    if cohorts:
+        df_rdv = apply_cohorts_to_rdv(rdvs[request.rdv], cohorts)
+    else:
+        df_rdv = rdvs[request.rdv].copy()
+        df_rdv["cohort"] = "All"
+        if "cohort_id" not in df_rdv.columns:
+            df_rdv["cohort_id"] = df_rdv["project_id"].astype(str)
+
+    analysis = FrequencyAnalysis(
+        df_rdv=df_rdv,
+        df_pde=rdvs["pde"],
+        event_col=request.event_col,
+    )
+    result = analysis.compute().to_dict()
+    return FrequencyResponse(**result)
+
+
+# ---------------------------------------------------------------------------
+# Stub routes for remaining analytics methods
+# Add implementations as core/analytics/*.py modules are built out.
+# ---------------------------------------------------------------------------
+
+@router.post("/distribution")
+def distribution_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")
+
+
+@router.post("/correlation")
+def correlation_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")
+
+
+@router.post("/timeseries")
+def timeseries_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")
+
+
+@router.post("/event-count")
+def event_count_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")
+
+
+@router.post("/event-time")
+def event_time_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")
+
+
+@router.post("/location")
+def location_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")
+
+
+@router.post("/recurrence")
+def recurrence_analysis():
+    raise HTTPException(status_code=501, detail="Not yet implemented.")

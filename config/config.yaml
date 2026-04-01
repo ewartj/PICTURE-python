@@ -1,0 +1,25 @@
+default:
+  # Path to folder containing RDV CSV/Parquet files.
+  # Override with environment variable PICTURE_DATA_DIR.
+  data_dir: null
+
+  # "local" | "azure" | "aws"
+  infrastructure: local
+
+  # Maximum rows to load per RDV (null = all rows)
+  n_max: null
+
+  # YAML app definition to load (* = all in data_dir)
+  app_yaml: "*"
+
+  # Optional external data directory (e.g. shapefiles)
+  external_data_dir: null
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true          # set false in production
+
+ui:
+  host: "0.0.0.0"
+  port: 8501
