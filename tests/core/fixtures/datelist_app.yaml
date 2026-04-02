@@ -1,0 +1,18 @@
+---
+title: Datelist Test App
+description: Tests the !datelist YAML tag.
+creator: test@example.com
+dataset: study02
+initialCohorts:
+  - label: Admitted in 2020
+    config:
+      - type: filter
+        rdv: adm
+        column: admission_datetime
+        query_type: date_between
+        val: !datelist ["2020-01-01", "2020-12-31"]
+        inclusion: ever
+analysis: []
+outputs:
+  interactive: true
+  pdf: false

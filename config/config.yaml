@@ -1,7 +1,7 @@
 default:
   # Path to folder containing RDV CSV/Parquet files.
   # Override with environment variable PICTURE_DATA_DIR.
-  data_dir: null
+  data_dir: /home/jsheldon/Documents/picture-python/data/dmv/parquet
 
   # "local" | "azure" | "aws"
   infrastructure: local

@@ -15,7 +15,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import analytics, cohorts, data
+from api.routes import analytics, apps, cohorts, data
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(apps.router)
 app.include_router(data.router)
 app.include_router(cohorts.router)
 app.include_router(analytics.router)
