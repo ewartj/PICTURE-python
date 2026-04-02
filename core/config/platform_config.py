@@ -67,6 +67,7 @@ class PlatformConfig:
         ui_port:           Streamlit/React port.
     """
     data_dir: Optional[Path] = None
+    app_dir: Optional[Path] = None
     app_yaml_paths: list[Path] = field(default_factory=list)
     external_data_dir: Optional[Path] = None
     n_max: Optional[int] = None
@@ -175,17 +176,21 @@ def load_platform_config(path: Optional[Path] = None) -> PlatformConfig:
 
     # Environment variable overrides
     data_dir_str = os.environ.get("PICTURE_DATA_DIR") or default.get("data_dir")
+    app_dir_str = os.environ.get("PICTURE_APP_DIR") or default.get("app_dir")
     app_yaml_str = os.environ.get("PICTURE_APP_YAML") or default.get("app_yaml") or "*"
     infrastructure = os.environ.get("PICTURE_INFRASTRUCTURE") or default.get("infrastructure", "local")
     n_max_raw = os.environ.get("PICTURE_N_MAX") or default.get("n_max")
 
     data_dir = _to_path_or_none(data_dir_str)
+    app_dir = _to_path_or_none(app_dir_str)
     n_max = _to_int_or_none(n_max_raw)
 
-    app_yaml_paths = _resolve_app_yaml(app_yaml_str, data_dir)
+    # Resolve app YAMLs from app_dir (not data_dir)
+    app_yaml_paths = _resolve_app_yaml(app_yaml_str, app_dir)
 
     return PlatformConfig(
         data_dir=data_dir,
+        app_dir=app_dir,
         app_yaml_paths=app_yaml_paths,
         external_data_dir=_to_path_or_none(default.get("external_data_dir")),
         n_max=n_max,

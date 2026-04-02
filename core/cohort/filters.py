@@ -105,6 +105,8 @@ def apply_cohorts_to_rdv(
     """
     frames: list[pd.DataFrame] = []
 
+    rdv_df = _strip_tz(rdv_df)
+
     for cohort in cohorts:
         pl = cohort.patient_list
         filtered = rdv_df.merge(pl, on="project_id", how="inner")
@@ -236,3 +238,18 @@ def _merge_contiguous_periods(patient_list: pd.DataFrame) -> pd.DataFrame:
 
 def _has_datetimes(df: pd.DataFrame) -> bool:
     return "start_datetime" in df.columns and "end_datetime" in df.columns
+
+
+def _strip_tz(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert any tz-aware datetime columns to tz-naive UTC.
+
+    Parquet files store datetimes as ``datetime64[us, UTC]``.  The cohort
+    patient-list dates (entry_date / exit_date) are tz-naive.  Pandas refuses
+    to compare the two, so we strip the timezone before any comparison.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            if hasattr(df[col].dt, "tz") and df[col].dt.tz is not None:
+                df[col] = df[col].dt.tz_localize(None)
+    return df

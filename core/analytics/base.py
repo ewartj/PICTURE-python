@@ -112,9 +112,9 @@ class AnalysisBase(ABC):
         return sorted(self.df_rdv[self.cohort_col].dropna().unique().tolist())
 
     def cohort_sizes(self) -> pd.Series:
-        """Number of unique patients per cohort (from df_pde)."""
+        """Number of unique patients per cohort (from df_rdv)."""
         return (
-            self.df_pde.groupby(self.cohort_col)["project_id"]
+            self.df_rdv.groupby(self.cohort_col)["project_id"]
             .nunique()
             .rename("n_patients")
         )
