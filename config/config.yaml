@@ -1,0 +1,31 @@
+default:
+  # Path to folder containing RDV CSV/Parquet files.
+  # Override with environment variable PICTURE_DATA_DIR.
+  data_dir: /home/jsheldon/Documents/picture-python/data/dmv/parquet
+
+  # Directory containing app YAML definition files.
+  # Kept separate from data_dir so app configs can live locally
+  # while data is loaded from a remote/cloud location.
+  # Override with environment variable PICTURE_APP_DIR.
+  app_dir: /home/jsheldon/Documents/picture-python/app
+
+  # "local" | "azure" | "aws"
+  infrastructure: local
+
+  # Maximum rows to load per RDV (null = all rows)
+  n_max: null
+
+  # YAML app definition to load (* = all in app_dir)
+  app_yaml: "*"
+
+  # Optional external data directory (e.g. shapefiles)
+  external_data_dir: null
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true          # set false in production
+
+ui:
+  host: "0.0.0.0"
+  port: 8501

@@ -1,0 +1,54 @@
+---
+title: Test App
+description: |
+  A sample app for unit testing.
+creator: test@example.com
+img: www/images/test.png
+dataset: study01
+amount_of_data_to_load: limited
+initialCohorts:
+  - label: Female
+    config:
+      - type: filter
+        rdv: pde
+        val: Female
+        inclusion: ever
+        column: sex_name
+        query_type: str_matches
+  - label: Male
+    config:
+      - type: filter
+        rdv: pde
+        val: Male
+        inclusion: ever
+        column: sex_name
+        query_type: str_matches
+offerCohortBuilder: true
+analysis:
+  - tab: Demographics
+    methodList:
+      - fn: tpl_pde_all
+        rpkg: driveanalytics
+        params:
+          df_pde: df_pde
+          df_loc: df_loc
+  - tab: Diagnoses
+    methodList:
+      - fn: gen_frequency_analysis
+        tab_lbl: Common diagnoses
+        params:
+          df_rdv: df_dia
+          event_col: diag_name
+      - fn: gen_distribution_plots
+        tab_lbl: Length of Stay
+        params:
+          df_rdv: df_wst
+          col: ward_stay_days
+          stratify_by: cohort
+          filter_col: ward_code
+          filter_val: PICU
+          side_by_side: TRUE
+          calc_length: FALSE
+outputs:
+  interactive: TRUE
+  pdf: false
