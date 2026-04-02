@@ -68,8 +68,15 @@ def resolve_cohort(
             filter_fn = _build_filter_fn(step)
             filter_fns.append(filter_fn)
 
-            if step.inclusion in ("fully_concurrent", "after_first", "on_first"):
+            if step.inclusion == "fully_concurrent":
                 filter_fns.append(_ff_concurrent)
+                filter_fns.append(_ff_crop_entry_exit)
+            elif step.inclusion == "after_first":
+                filter_fns.append(_ff_concurrent)
+                filter_fns.append(_ff_crop_entry)
+            elif step.inclusion == "on_first":
+                filter_fns.append(_ff_concurrent)
+                filter_fns.append(_ff_crop_first)
 
             # Apply filter chain
             working = rdv_df.merge(patient_list, on="project_id", how="right")
@@ -234,6 +241,91 @@ def _merge_contiguous_periods(patient_list: pd.DataFrame) -> pd.DataFrame:
         result_rows.extend(merged)
 
     return pd.DataFrame(result_rows)
+
+
+def _window_offsets(step) -> tuple[pd.Timedelta, pd.Timedelta]:
+    """Return (start_offset, end_offset) from step.window ([w1, w2] in days)."""
+    w = step.window if step and getattr(step, "window", None) else [0, 0]
+    return pd.Timedelta(days=int(w[0])), pd.Timedelta(days=int(w[1]))
+
+
+def _ff_crop_entry_exit(df: pd.DataFrame, step) -> pd.DataFrame:
+    """fully_concurrent: crop entry/exit to the overlapping event window.
+
+    entry = max(entry, start_datetime + w1)  per row
+    exit  = min(exit,  end_datetime   + w2)  per row
+
+    Mirrors R ``ff_crop_entry_exit_closure()``.
+    """
+    if not _has_datetimes(df):
+        return df
+    w1, w2 = _window_offsets(step)
+    df = df.copy()
+    adjusted_start = df["start_datetime"] + w1
+    df["entry_date"] = pd.concat(
+        [df["entry_date"].rename("a"), adjusted_start.rename("b")], axis=1
+    ).max(axis=1)
+    if df["end_datetime"].notna().any():
+        adjusted_end = df["end_datetime"] + w2
+        df["exit_date"] = pd.concat(
+            [df["exit_date"].rename("a"), adjusted_end.rename("b")], axis=1
+        ).min(axis=1)
+    return df[df["entry_date"] <= df["exit_date"]]
+
+
+def _ff_crop_entry(df: pd.DataFrame, step) -> pd.DataFrame:
+    """after_first: advance entry to the first matching event + w1.
+
+    entry = max(entry, min(start_datetime) + w1)  per patient
+
+    Mirrors R ``ff_crop_entry_closure()``.
+    """
+    if not _has_datetimes(df):
+        return df
+    w1, _w2 = _window_offsets(step)
+    df = df.copy()
+    first_start = (
+        df.groupby("project_id")["start_datetime"]
+        .min()
+        .add(w1)
+        .rename("_first_start")
+        .reset_index()
+    )
+    df = df.merge(first_start, on="project_id", how="left")
+    df["entry_date"] = pd.concat(
+        [df["entry_date"].rename("a"), df["_first_start"].rename("b")], axis=1
+    ).max(axis=1)
+    df = df.drop(columns=["_first_start"])
+    return df[df["entry_date"] <= df["exit_date"]]
+
+
+def _ff_crop_first(df: pd.DataFrame, step) -> pd.DataFrame:
+    """on_first: pin both entry and exit to the first matching event.
+
+    entry = max(entry, min(start_datetime) + w1)  per patient
+    exit  = min(exit,  min(start_datetime) + w2)  per patient
+
+    Mirrors R ``ff_crop_first_closure()``.
+    """
+    if not _has_datetimes(df):
+        return df
+    w1, w2 = _window_offsets(step)
+    df = df.copy()
+    first_start = (
+        df.groupby("project_id")["start_datetime"]
+        .min()
+        .rename("_first_start")
+        .reset_index()
+    )
+    df = df.merge(first_start, on="project_id", how="left")
+    df["entry_date"] = pd.concat(
+        [df["entry_date"].rename("a"), (df["_first_start"] + w1).rename("b")], axis=1
+    ).max(axis=1)
+    df["exit_date"] = pd.concat(
+        [df["exit_date"].rename("a"), (df["_first_start"] + w2).rename("b")], axis=1
+    ).min(axis=1)
+    df = df.drop(columns=["_first_start"])
+    return df[df["entry_date"] <= df["exit_date"]]
 
 
 def _has_datetimes(df: pd.DataFrame) -> bool:

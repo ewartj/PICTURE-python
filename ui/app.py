@@ -237,16 +237,30 @@ if resolved_cohorts:
 
 st.markdown("---")
 
-# ── Analysis tabs ──────────────────────────────────────────────────────────────
+# ── Tabs: Cohorts (editor) + analysis tabs ─────────────────────────────────────
 
-if not app.analysis:
-    st.info("This app YAML defines no analysis tabs.")
-    st.stop()
+analysis_tab_labels = [t.tab for t in app.analysis] if app.analysis else []
+all_tab_labels = ["Cohorts"] + analysis_tab_labels
+all_st_tabs = st.tabs(all_tab_labels)
 
-tab_labels = [t.tab for t in app.analysis]
-st_tabs = st.tabs(tab_labels)
+# ── Cohorts tab ─────────────────────────────────────────────────────────────────
 
-for st_tab, analysis_tab in zip(st_tabs, app.analysis):
+with all_st_tabs[0]:
+    from ui.pages.cohort_editor import render as render_cohort_editor
+    render_cohort_editor(
+        app_id=app.id,
+        initial_cohorts=app.initial_cohorts or [],
+        rdvs=rdvs,
+        data_dir=data_dir,
+    )
+    # Re-read resolved_cohorts in case the editor just re-resolved them
+    resolved_cohorts = st.session_state.get(
+        f"cohorts:{app.id}:{data_dir}", resolved_cohorts
+    )
+
+# ── Analysis tabs ───────────────────────────────────────────────────────────────
+
+for st_tab, analysis_tab in zip(all_st_tabs[1:], app.analysis or []):
     with st_tab:
         if not analysis_tab.method_list:
             st.info("No methods defined for this tab.")
