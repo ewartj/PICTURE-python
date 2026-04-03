@@ -20,11 +20,13 @@ import pandas as pd
 import streamlit as st
 
 from core.cohort.filters import resolve_cohort
+from core.cohort.formatting import describe_step
 from core.cohort.models import (
     CohortDefinition,
     CohortFilterStep,
     ResolvedCohort,
 )
+from core.rdv.lookups import get_variable_filter_type, get_variable_input_type
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -223,6 +225,12 @@ def _render_step_editor(
             if st.button("✕", key=f"rm_step_{key}", help="Remove this filter step"):
                 steps_to_remove.append(si)
 
+        # Auto-suggest query type from lookup when column changes
+        suggested_qt = get_variable_filter_type(step.get("rdv", ""), step.get("column", ""))
+        if suggested_qt and step.get("_last_column") != step.get("column"):
+            step["query_type"] = suggested_qt
+        step["_last_column"] = step.get("column")
+
         # Value inputs (depend on query type)
         bottom_cols = st.columns([4, 3])
 
@@ -238,6 +246,17 @@ def _render_step_editor(
                 format_func=lambda i: f"{i}  —  {_INCLUSION_HELP[i]}",
                 key=f"inc_{key}",
             )
+
+        # Human-readable preview of what this step means
+        preview_step = CohortFilterStep(
+            type="filter",
+            rdv=step.get("rdv"),
+            column=step.get("column"),
+            val=step.get("val") or [],
+            inclusion=step.get("inclusion", "ever"),
+            query_type=step.get("query_type", "str_matches"),
+        )
+        st.caption(f"↳ {describe_step(preview_step)}")
 
         # Window offsets (advanced, collapsed by default)
         window = step.get("window") or [0, 0]

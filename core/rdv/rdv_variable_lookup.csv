@@ -1,0 +1,65 @@
+rdv_code, variable_code, label, description, input_type, filter_type
+dia_conditions, diag_name, "diagnosis name", "ICD-10 label for the diagnosis or category of diagnoses", text, str_contains
+dia_conditions, diag_local_code, "ICD-10 diagnosis code", "ICD-10 code for the diagnosis or category of diagnoses", select, str_starts
+dia_conditions, start_datetime, "diagnosis date", "date diagnosis was made", date_range, date_between
+dia_conditions, icd10_chapter, "ICD-10 chapter", "ICD-10 high-level chapter for diagnosis", select, str_matches
+dia_conditions, icd10_section, "ICD-10 section", "ICD-10 section for diagnosis", select, str_matches
+dia_conditions, icd10_category, "ICD-10 category", "ICD-10 category for diagnosis", select, str_matches
+dia_conditions, cwt_specific_group, "CWT specific group (custom label)", "CWT specific group (custom label)", select, str_matches
+dia_other, diag_name, "diagnosis name", "ICD-10 label for the diagnosis or category of diagnoses", text, str_contains
+dia_other, diag_local_code, "ICD-10 diagnosis code", "ICD-10 code for the diagnosis or category of diagnoses", select, str_starts
+dia_other, start_datetime, "diagnosis date", "date diagnosis was made", date_range, date_between
+dia_other, icd10_chapter, "ICD-10 chapter", "ICD-10 high-level chapter for diagnosis", select, str_matches
+dia_other, icd10_section, "ICD-10 section", "ICD-10 section for diagnosis", select, str_matches
+dia_other, icd10_category, "ICD-10 category", "ICD-10 category for diagnosis", select, str_matches
+pde, project_id, "patient ID", "patient ID", select, str_matches
+pde, sex_name, "sex", "patient's biological sex", select, str_matches
+pde, ethnicity_nat_code, "NHS ethnicity code", "NHS data model ethnicity code", select, str_matches
+pde, ethnicity_name, "NHS ethnicity name", "NHS data model ethnicity description", text, str_contains
+pde, birth_date, "date of birth", "date of birth", date_range, date_between
+pde, birth_date_age, age, age, age_range, age_between
+pro_opcs, proc_name, "procedure name", "OPCS label for the procedure", text, str_contains
+pro_opcs, proc_local_code, "OPCS procedure code", "NHS OPCS-4 procedure code", select, str_starts
+pro_opcs, start_datetime, "procedure date", "date procedure was performed", date_range, date_between
+pro_lab, proc_name, "procedure name", "Label for the lab procedure", text, str_contains
+pro_lab, proc_local_code, "Lab procedure code", "Local code for the lab procedure", select, str_starts
+pro_lab, start_datetime, "procedure date", "date procedure was performed", date_range, date_between
+pro_img, proc_name, "procedure name", "Label for the imaging procedure", text, str_contains
+pro_img, proc_local_code, "Imaging procedure code", "Local code for the imaging procedure", select, str_starts
+pro_img, start_datetime, "procedure date", "date procedure was performed", date_range, date_between
+pro_other, proc_name, "procedure name", "Label for the procedure", text, str_contains
+pro_other, proc_local_code, "Procedure code", "Local code for the procedure", select, str_starts
+pro_other, start_datetime, "procedure date", "date procedure was performed", date_range, date_between
+had, patient_class, "patient class", "admission of a patient class", select, str_matches
+had, hospital_service, "hospital service", "hospital service associated to an admission", select, str_matches
+had, admission_type, "admission type", "type of admission", select, str_matches
+had, admission_type_custom, "admission type custom", "type of admission (custom)", select, str_matches
+had, admission_source, "admission source", "where the patient was admitted from", select, str_matches
+had, start_datetime, "admission start date", "date of admission", date_range, date_between
+had, age_at_event_years, "Age at hospital admission (years)", "Age at hospital admission (years)", numeric_range, numeric_between
+wst, ward_short_name, "ward name", "ward patient was admitted to", select, str_matches
+med_admins, drug_code, "drug code", "code of the drug", select, str_matches
+med_admins, drug_name, "drug name", "name of drug", select, str_matches
+med_admins, start_datetime, "admin start datetime", "start of admin", date_range, date_between
+med_admins, drug_code, "drug code", "code of the drug", select, str_matches
+med_admins, drug_name, "drug name", "name of drug", select, str_matches
+med_admins, start_datetime, "admin start datetime", "start of admin", date_range, date_between
+med_admins, drug_simple_generic_name, "drug simple generic name", "simple generic name of drug", select, str_matches
+med_admins, drug_therapeutic_class_name, "drug therapeutic class name", "therapeutic class name of drug", select, str_matches
+med_admins, drug_pharmaceutical_class_name, "drug pharmaceutical class name", "pharmaceutical class nameof drug", select, str_matches
+med_admins, route_name, "route name", "type of route", select, str_matches
+med_orders, drug_code, "drug code", "code of the drug", select, str_matches
+med_orders, drug_name, "drug name", "name of drug", select, str_matches
+med_orders, start_datetime, "admin start datetime", "start of admin", date_range, date_between
+med_orders, drug_simple_generic_name, "drug simple generic name", "simple generic name of drug", select, str_matches
+med_orders, drug_therapeutic_class_name, "drug therapeutic class name", "therapeutic class name of drug", select, str_matches
+med_orders, drug_pharmaceutical_class_name, "drug pharmaceutical class name", "pharmaceutical class nameof drug", select, str_matches
+med_orders, route_name, "route name", "type of route", select, str_matches
+lab_components, collected_datetime, "collected date", "collected date", date_range, date_between
+lab_components, SpecimenType, "test specimen type", "type of speciment used to run the test", select, str_matches
+lab_components, TestName, "test name", "name of the test", select, str_matches
+lab_components, component_name, "lab component name", "name of the lab component", select, str_matches
+lab_components, NumericValue, "lab result (number)", "Lab result - number", numeric_range, numeric_between
+lab_components, Value, "lab result (category)", "Lab result - category", select, str_matches
+lab_components, abnormal, "lab result (abnormal flag)", "Lab result - abnormal flag", select, str_matches
+lab_components, flag, "lab result (flag)", "Lab result - flag", select, str_matches

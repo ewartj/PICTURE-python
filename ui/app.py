@@ -79,13 +79,21 @@ def _load_rdvs(data_dir: str) -> dict:
     return st.session_state[key]
 
 
-def _resolve_cohorts(app: AppConfig, data_dir: str, rdvs: dict) -> list[ResolvedCohort]:
-    key = f"cohorts:{app.id}:{data_dir}"
+def _resolve_cohorts(
+    app: AppConfig,
+    data_dir: str,
+    rdvs: dict,
+    override_cohorts: list | None = None,
+) -> list[ResolvedCohort]:
+    cohort_defs = override_cohorts if override_cohorts is not None else (app.initial_cohorts or [])
+    # Use a cache key that includes whether we have a patient override
+    has_override = override_cohorts is not None and override_cohorts is not (app.initial_cohorts or [])
+    key = f"cohorts:{app.id}:{data_dir}" + (":patient" if has_override else "")
     if key not in st.session_state:
         resolved: list[ResolvedCohort] = []
-        if app.initial_cohorts:
+        if cohort_defs:
             with st.spinner("Resolving cohorts…"):
-                for defn in app.initial_cohorts:
+                for defn in cohort_defs:
                     try:
                         resolved.append(resolve_cohort(defn, rdvs))
                     except Exception as exc:
@@ -116,12 +124,28 @@ with st.sidebar:
         help="Folder containing RDV files. Can be a remote/cloud path.",
     )
 
-    # Back button shown only when an app is open
+    # Back button + patient selector shown only when an app is open
     if st.session_state.get("selected_app_id") is not None:
         st.markdown("---")
         if st.button("← All apps"):
             st.session_state["selected_app_id"] = None
             st.rerun()
+
+        # Patient selector — only shown when data is loaded
+        _rdvs_key = f"rdvs:{data_dir}" if data_dir else None
+        if _rdvs_key and _rdvs_key in st.session_state:
+            st.markdown("---")
+            from ui.components.patient_selector import render as _render_patient
+            _patient_cohorts = _render_patient(
+                rdvs=st.session_state[_rdvs_key],
+                initial_cohorts=st.session_state.get(
+                    f"_app_initial_cohorts:{st.session_state['selected_app_id']}", []
+                ),
+                key_prefix="sidebar_patient",
+            )
+            st.session_state[
+                f"_patient_cohorts:{st.session_state['selected_app_id']}"
+            ] = _patient_cohorts
 
     st.markdown("---")
     st.caption("UI layer — will be replaced by React frontend.")
@@ -221,7 +245,14 @@ if not rdvs:
     st.warning("No RDV files found in the data directory.")
     st.stop()
 
-resolved_cohorts = _resolve_cohorts(app, data_dir, rdvs)
+# Cache initial cohorts so the sidebar patient selector can access them
+st.session_state[f"_app_initial_cohorts:{app.id}"] = app.initial_cohorts or []
+
+# If the patient selector substituted a patient ID, use those definitions
+_patient_cohorts = st.session_state.get(f"_patient_cohorts:{app.id}")
+_effective_initial = _patient_cohorts if _patient_cohorts else (app.initial_cohorts or [])
+
+resolved_cohorts = _resolve_cohorts(app, data_dir, rdvs, override_cohorts=_effective_initial)
 
 # ── App header ─────────────────────────────────────────────────────────────────
 
