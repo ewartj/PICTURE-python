@@ -246,7 +246,7 @@ all_st_tabs = st.tabs(all_tab_labels)
 # ── Cohorts tab ─────────────────────────────────────────────────────────────────
 
 with all_st_tabs[0]:
-    from ui.pages.cohort_editor import render as render_cohort_editor
+    from ui.components.cohort_editor import render as render_cohort_editor
     render_cohort_editor(
         app_id=app.id,
         initial_cohorts=app.initial_cohorts or [],
@@ -278,21 +278,21 @@ for st_tab, analysis_tab in zip(all_st_tabs[1:], app.analysis or []):
                 page_key = _FN_REGISTRY.get(method.fn)
 
                 if page_key == "frequency":
-                    from ui.pages.frequency import render as render_frequency
+                    from ui.components.frequency import render as render_frequency
                     render_frequency(
                         method=method,
                         resolved_cohorts=resolved_cohorts,
                         rdvs=rdvs,
                     )
                 elif page_key == "demographics":
-                    from ui.pages.demographics import render as render_demographics
+                    from ui.components.demographics import render as render_demographics
                     render_demographics(
                         method=method,
                         resolved_cohorts=resolved_cohorts,
                         rdvs=rdvs,
                     )
                 elif page_key == "distribution":
-                    from ui.pages.distribution import render as render_distribution
+                    from ui.components.distribution import render as render_distribution
                     render_distribution(
                         method=method,
                         resolved_cohorts=resolved_cohorts,
