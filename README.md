@@ -163,3 +163,32 @@ picture-python/
 │   └── api/                 # integration tests using FastAPI TestClient
 └── pyproject.toml
 ```
+
+## AI Agents
+
+To help with development agents have been developed. They are stored in `.claude/agents` and can be called either directly from the chat or Claude will select agents when needed. In addition AI is used to help review code. They are defined and run from `review.sh`. It will trigger automatically with code review and can also be called mannually:
+
+#### review.sh directly (no commit, just prints):
+```bash
+cd /home/jsheldon/Documents/picture-python
+git add ui/components/cohort_editor.py
+./review.sh
+```
+#### pre-commit hook (triggered by git commit):
+```bash
+git commit -m "test: pre-commit review"
+```
+#### force a BLOCK to verify it stops the commit:
+```bash
+echo 'SECRET_KEY = "ghp_fakeToken123"' >> ui/components/cohort_editor.py
+git add ui/components/cohort_editor.py
+git commit -m "test: should be blocked"
+```
+#### review a branch:
+```bash
+./review.sh --branch add-github-actions
+```
+#### review a folder:
+```bash
+./review.sh --folder core/analytics/
+```
