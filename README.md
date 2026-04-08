@@ -109,6 +109,13 @@ Each module in `core/analytics/` follows the same interface (defined by `Analysi
 pip install -e ".[dev]"
 ```
 
+### Enable git hooks
+```bash
+git config core.hooksPath hooks/
+```
+
+This activates the pre-commit pipeline (ruff, mypy, AI review). To skip on a single commit: `git commit --no-verify`.
+
 ### Configure
 Edit `config/config.yaml`:
 ```yaml
@@ -166,29 +173,38 @@ picture-python/
 
 ## AI Agents
 
-To help with development agents have been developed. They are stored in `.claude/agents` and can be called either directly from the chat or Claude will select agents when needed. In addition AI is used to help review code. They are defined and run from `review.sh`. It will trigger automatically with code review and can also be called mannually:
+Three specialist agents are defined in `.claude/agents/` and are available in any Claude Code session:
 
-#### review.sh directly (no commit, just prints):
+| Agent | Triggers on |
+|---|---|
+| `code-reviewer` | "review this file", "check for security issues" |
+| `backend-architect` | "design an endpoint", "how should I structure this module" |
+| `ui-designer` | "improve this component", "plan the React migration" |
+
+Claude automatically routes to the right agent based on your prompt, or you can call one explicitly: *"Use the code-reviewer agent to check `core/analytics/frequency.py`"*.
+
+### Automated code review (`review.sh`)
+
+Three agents (security/PHI, architecture, code quality) run in parallel against your changes. The pre-commit hook calls `review.sh --block-on-issues` automatically on every `git commit`, blocking the commit if any BLOCK-level issue is found.
+
+Run manually at any time:
+
 ```bash
-cd /home/jsheldon/Documents/picture-python
-git add ui/components/cohort_editor.py
+# Review staged changes
+git add <file>
 ./review.sh
-```
-#### pre-commit hook (triggered by git commit):
-```bash
-git commit -m "test: pre-commit review"
-```
-#### force a BLOCK to verify it stops the commit:
-```bash
-echo 'SECRET_KEY = "ghp_fakeToken123"' >> ui/components/cohort_editor.py
-git add ui/components/cohort_editor.py
-git commit -m "test: should be blocked"
-```
-#### review a branch:
-```bash
-./review.sh --branch add-github-actions
-```
-#### review a folder:
-```bash
+
+# Review a specific commit
+./review.sh --commit <sha>
+
+# Review a branch vs master
+./review.sh --branch <branch-name>
+
+# Review all Python files in a folder
 ./review.sh --folder core/analytics/
+```
+
+To skip the review in an emergency:
+```bash
+git commit --no-verify -m "emergency fix"
 ```

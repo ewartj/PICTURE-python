@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# PICTURE pre-commit hook
+# Runs fast traditional checks first, then AI review.
+# To skip entirely: git commit --no-verify
+
+set -uo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Colours
+RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
+
+pass() { echo -e "  ${GREEN}✓${NC} $1"; }
+fail() { echo -e "  ${RED}✗${NC} $1"; }
+warn() { echo -e "  ${YELLOW}!${NC} $1"; }
+
+echo ""
+echo -e "${BOLD}Pre-commit checks — PICTURE${NC}"
+echo "============================================================"
+
+FAILED=0
+
+# --- Get list of staged Python files ---
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+# ── 1. Ruff lint (staged Python files only) ──────────────────────────────────
+echo ""
+echo -e "${BOLD}[1/4] Ruff lint${NC}"
+
+if [ -z "$STAGED_PY" ]; then
+  pass "No Python files staged"
+else
+  if echo "$STAGED_PY" | xargs python3 -m ruff check --quiet 2>&1; then
+    pass "ruff clean"
+  else
+    fail "ruff found issues — run: ruff check --fix"
+    FAILED=1
+  fi
+fi
+
+# ── 2. Ruff format check (staged Python files only) ──────────────────────────
+echo ""
+echo -e "${BOLD}[2/4] Ruff format${NC}"
+
+if [ -z "$STAGED_PY" ]; then
+  pass "No Python files staged"
+else
+  if echo "$STAGED_PY" | xargs python3 -m ruff format --check --quiet 2>&1; then
+    pass "Formatting OK"
+  else
+    fail "Formatting issues found — run: ruff format"
+    FAILED=1
+  fi
+fi
+
+# ── 3. mypy type check (core/ and api/ only — the server-side layers) ────────
+echo ""
+echo -e "${BOLD}[3/4] mypy type check${NC}"
+
+STAGED_CORE_API=$(echo "$STAGED_PY" | grep -E '^(core|api)/' || true)
+
+if [ -z "$STAGED_CORE_API" ]; then
+  pass "No core/ or api/ files staged"
+else
+  if python3 -m mypy core/ api/ --ignore-missing-imports --no-error-summary --quiet 2>&1; then
+    pass "mypy clean"
+  else
+    fail "mypy found type errors"
+    FAILED=1
+  fi
+fi
+
+# ── Bail early on traditional failures (don't spend AI credits if lint fails) ─
+if [ "$FAILED" -eq 1 ]; then
+  echo ""
+  echo -e "${RED}============================================================${NC}"
+  echo -e "${RED}Commit blocked by linting/type errors. Fix above and retry.${NC}"
+  echo "To skip: git commit --no-verify"
+  exit 1
+fi
+
+# ── 4. AI review (security, architecture, code quality — parallel) ────────────
+echo ""
+echo -e "${BOLD}[4/4] AI code review${NC}"
+
+"$REPO_ROOT/review.sh" --block-on-issues
