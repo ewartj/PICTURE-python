@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "agent",
+            "statusMessage": "Code quality review...",
+            "timeout": 60,
+            "prompt": "You are a Python code quality reviewer. A file was just written or edited. Review the changed file for: Python best practices, readability, unnecessary complexity, missing edge case handling, and adherence to PEP 8. Report any issues concisely. File info: $ARGUMENTS"
+          },
+          {
+            "type": "agent",
+            "statusMessage": "Security & PHI review...",
+            "timeout": 60,
+            "prompt": "You are a security and data privacy reviewer for a clinical data system handling patient health information (PHI). A file was just written or edited. Review for: hardcoded credentials or secrets, unsafe file I/O on patient data, logging of PHI, SQL injection, unvalidated inputs, and insecure data exposure. Flag any issues immediately. File info: $ARGUMENTS"
+          },
+          {
+            "type": "agent",
+            "statusMessage": "Data integrity review...",
+            "timeout": 60,
+            "prompt": "You are a data integrity reviewer for a clinical data pipeline. A file was just written or edited. Review for: schema assumptions that could break on missing columns, incorrect data type handling, silent failures in data transformations, and incorrect aggregations or joins that could corrupt patient records. Report any issues found. File info: $ARGUMENTS"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -216,4 +216,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # data
-data/
+data/.mcp.json
+data/*
+
+# Claude Code — secrets (token in env field)
+.mcp.json

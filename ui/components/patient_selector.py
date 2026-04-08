@@ -17,8 +17,6 @@ Usage::
 
 from __future__ import annotations
 
-import copy
-
 import pandas as pd
 import streamlit as st
 
@@ -91,9 +89,7 @@ def _substitute_patient_id(
     for cohort in cohorts:
         new_steps: list[CohortFilterStep] = []
         for step in cohort.config:
-            new_val = (
-                [project_id if str(v) == _PLACEHOLDER else v for v in (step.val or [])]
-            )
+            new_val = [project_id if str(v) == _PLACEHOLDER else v for v in (step.val or [])]
             new_steps.append(
                 CohortFilterStep(
                     type=step.type,

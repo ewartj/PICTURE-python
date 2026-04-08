@@ -208,8 +208,15 @@ def _render_step_editor(
                 key=f"col_{key}",
             )
 
-        # Query type
+        # Query type — seed a default from the lookup when first adding a step
+        # (val is empty), but never override once the user has entered values.
         current_qt = step.get("query_type", "str_matches")
+        if not step.get("val"):
+            suggested_qt = get_variable_filter_type(step.get("rdv", ""), step.get("column", ""))
+            if suggested_qt and suggested_qt in _QUERY_TYPES:
+                current_qt = suggested_qt
+                step["query_type"] = current_qt
+
         with top_cols[2]:
             step["query_type"] = st.selectbox(
                 "Query type",
@@ -224,12 +231,6 @@ def _render_step_editor(
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("✕", key=f"rm_step_{key}", help="Remove this filter step"):
                 steps_to_remove.append(si)
-
-        # Auto-suggest query type from lookup when column changes
-        suggested_qt = get_variable_filter_type(step.get("rdv", ""), step.get("column", ""))
-        if suggested_qt and step.get("_last_column") != step.get("column"):
-            step["query_type"] = suggested_qt
-        step["_last_column"] = step.get("column")
 
         # Value inputs (depend on query type)
         bottom_cols = st.columns([4, 3])
@@ -314,19 +315,29 @@ def _render_val_input(step: dict, rdv_df: pd.DataFrame, key: str) -> list:
 
     elif qt in ("date_between",):
         # Two date inputs
-        lo = pd.to_datetime(current_val[0]).date() if len(current_val) > 0 else None
-        hi = pd.to_datetime(current_val[1]).date() if len(current_val) > 1 else None
+        def _to_date(v):
+            try:
+                return pd.to_datetime(v).date() if v is not None else None
+            except Exception:
+                return None
+        lo = _to_date(current_val[0]) if len(current_val) > 0 else None
+        hi = _to_date(current_val[1]) if len(current_val) > 1 else None
         d_cols = st.columns(2)
         with d_cols[0]:
             lo = st.date_input("From", value=lo, key=f"val_lo_{key}")
         with d_cols[1]:
             hi = st.date_input("To", value=hi, key=f"val_hi_{key}")
-        return [str(lo), str(hi)]
+        return [str(lo) if lo is not None else "", str(hi) if hi is not None else ""]
 
     else:
         # numeric_between / age_between — two number inputs
-        lo_val = float(current_val[0]) if len(current_val) > 0 else 0.0
-        hi_val = float(current_val[1]) if len(current_val) > 1 else 100.0
+        def _to_float(v, default):
+            try:
+                return float(v) if v is not None else default
+            except (TypeError, ValueError):
+                return default
+        lo_val = _to_float(current_val[0], 0.0) if len(current_val) > 0 else 0.0
+        hi_val = _to_float(current_val[1], 100.0) if len(current_val) > 1 else 100.0
         n_cols = st.columns(2)
         label_lo = "Min age (years)" if qt == "age_between" else "Min"
         label_hi = "Max age (years)" if qt == "age_between" else "Max"
@@ -403,7 +414,7 @@ def _dicts_to_cohorts(cohort_dicts: list[dict]) -> list[CohortDefinition]:
             val = s.get("val") or []
             if not isinstance(val, list):
                 val = [val]
-            val = [str(v) for v in val if v != ""]
+            val = [str(v) for v in val if v not in ("", "None", None)]
             window = s.get("window") or [0, 0]
             steps.append(CohortFilterStep(
                 type="filter" if i == 0 else "and",

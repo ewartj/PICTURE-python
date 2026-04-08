@@ -109,6 +109,13 @@ Each module in `core/analytics/` follows the same interface (defined by `Analysi
 pip install -e ".[dev]"
 ```
 
+### Enable git hooks
+```bash
+git config core.hooksPath hooks/
+```
+
+This activates the pre-commit pipeline (ruff, mypy, AI review). To skip on a single commit: `git commit --no-verify`.
+
 ### Configure
 Edit `config/config.yaml`:
 ```yaml
@@ -162,4 +169,42 @@ picture-python/
 │   ├── core/                # unit tests for analytics + cohort filters
 │   └── api/                 # integration tests using FastAPI TestClient
 └── pyproject.toml
+```
+
+## AI Agents
+
+Three specialist agents are defined in `.claude/agents/` and are available in any Claude Code session:
+
+| Agent | Triggers on |
+|---|---|
+| `code-reviewer` | "review this file", "check for security issues" |
+| `backend-architect` | "design an endpoint", "how should I structure this module" |
+| `ui-designer` | "improve this component", "plan the React migration" |
+
+Claude automatically routes to the right agent based on your prompt, or you can call one explicitly: *"Use the code-reviewer agent to check `core/analytics/frequency.py`"*.
+
+### Automated code review (`review.sh`)
+
+Three agents (security/PHI, architecture, code quality) run in parallel against your changes. The pre-commit hook calls `review.sh --block-on-issues` automatically on every `git commit`, blocking the commit if any BLOCK-level issue is found.
+
+Run manually at any time:
+
+```bash
+# Review staged changes
+git add <file>
+./review.sh
+
+# Review a specific commit
+./review.sh --commit <sha>
+
+# Review a branch vs master
+./review.sh --branch <branch-name>
+
+# Review all Python files in a folder
+./review.sh --folder core/analytics/
+```
+
+To skip the review in an emergency:
+```bash
+git commit --no-verify -m "emergency fix"
 ```
