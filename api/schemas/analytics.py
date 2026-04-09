@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 # Shared
 # ---------------------------------------------------------------------------
 
+
 class AnalysisMetaSchema(BaseModel):
     cohorts: list[str]
     cohort_sizes: dict[str, int]
@@ -23,14 +24,16 @@ class AnalysisMetaSchema(BaseModel):
 
 class AnalysisResponseBase(BaseModel):
     """Every analytics response includes a table, a plotly figure JSON, and meta."""
+
     table: list[dict[str, Any]]
-    plot: str                   # plotly figure serialised with fig.to_json()
+    plot: str  # plotly figure serialised with fig.to_json()
     meta: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
 # Frequency Analysis
 # ---------------------------------------------------------------------------
+
 
 class FrequencyRequest(BaseModel):
     data_dir: str
@@ -46,27 +49,49 @@ class FrequencyResponse(AnalysisResponseBase):
 
 
 # ---------------------------------------------------------------------------
-# Distribution Analysis  (stub — implement in core/analytics/distribution.py)
+# Event Count
 # ---------------------------------------------------------------------------
 
-class DistributionRequest(BaseModel):
+
+class EventCountRequest(BaseModel):
     data_dir: str
     rdv: str
-    col: str
+    event_col: str
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
-    n_max: Optional[int] = None
+    count_unique: bool = True
 
 
-class DistributionResponse(AnalysisResponseBase):
+class EventCountResponse(AnalysisResponseBase):
     pass
+
+
+# ---------------------------------------------------------------------------
+# Event Time Analysis
+# ---------------------------------------------------------------------------
+
+
+class EventTimeRequest(BaseModel):
+    data_dir: str
+    rdv: str
+    event_col: str
+    cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
+    plot_type: Literal["boxplot", "histogram"] = "boxplot"
+    log_scale: bool = False
+
+
+class EventTimeResponse(BaseModel):
+    summary: list[dict[str, Any]]
+    plot: str
+    meta: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
 # Data endpoint schemas
 # ---------------------------------------------------------------------------
 
+
 class RdvListResponse(BaseModel):
-    available: list[str]   # RDV names found in data_dir
+    available: list[str]  # RDV names found in data_dir
 
 
 class RdvInfoResponse(BaseModel):

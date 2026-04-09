@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def resolve_cohort(
     definition: CohortDefinition,
     rdvs: dict[str, pd.DataFrame],
@@ -83,7 +84,9 @@ def resolve_cohort(
             for fn in filter_fns:
                 working = fn(working, step)
 
-            new_list = working[["project_id", "entry_date", "exit_date"]].drop_duplicates()
+            new_list = working[
+                ["project_id", "entry_date", "exit_date"]
+            ].drop_duplicates()
 
             if step.inclusion == "never":
                 excluded = new_list["project_id"].unique()
@@ -123,6 +126,8 @@ def apply_cohorts_to_rdv(
             filtered = _ff_crop_start_end(filtered)
 
         filtered = filtered.assign(cohort=cohort.label)
+        # Drop patient-list columns — they were only needed for temporal filtering.
+        filtered = filtered.drop(columns=["entry_date", "exit_date"], errors="ignore")
         frames.append(filtered)
 
     if not frames:
@@ -134,6 +139,7 @@ def apply_cohorts_to_rdv(
 # ---------------------------------------------------------------------------
 # Filter function builders
 # ---------------------------------------------------------------------------
+
 
 def _build_filter_fn(step: CohortFilterStep) -> Callable:
     col = step.column
@@ -158,12 +164,15 @@ def _build_filter_fn(step: CohortFilterStep) -> Callable:
 
     if qt == "age_between":
         start_age, end_age = int(vals[0]), int(vals[1])
+        assert col is not None, "age_between filter requires a column name"
         return lambda df, _s: _filter_age_between(df, col, start_age, end_age)
 
     raise ValueError(f"Unknown query_type: {qt}")
 
 
-def _filter_age_between(df: pd.DataFrame, col: str, start_age: int, end_age: int) -> pd.DataFrame:
+def _filter_age_between(
+    df: pd.DataFrame, col: str, start_age: int, end_age: int
+) -> pd.DataFrame:
     if "birth_date" not in df.columns:
         return df
     df = df.copy()
@@ -179,12 +188,12 @@ def _filter_age_between(df: pd.DataFrame, col: str, start_age: int, end_age: int
 # Temporal filter functions  (replaces R ff_* functions)
 # ---------------------------------------------------------------------------
 
+
 def _ff_concurrent(df: pd.DataFrame, step=None) -> pd.DataFrame:
     if not _has_datetimes(df):
         return df
-    mask = (
-        (df["start_datetime"] <= df["exit_date"]) &
-        (df["end_datetime"].isna() | (df["end_datetime"] >= df["entry_date"]))
+    mask = (df["start_datetime"] <= df["exit_date"]) & (
+        df["end_datetime"].isna() | (df["end_datetime"] >= df["entry_date"])
     )
     return df[mask]
 
@@ -201,6 +210,7 @@ def _ff_crop_start_end(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _base_patient_list(pde: pd.DataFrame) -> pd.DataFrame:
     today = pd.Timestamp.today().normalize()
@@ -338,10 +348,19 @@ def _strip_tz(df: pd.DataFrame) -> pd.DataFrame:
     Parquet files store datetimes as ``datetime64[us, UTC]``.  The cohort
     patient-list dates (entry_date / exit_date) are tz-naive.  Pandas refuses
     to compare the two, so we strip the timezone before any comparison.
+
+    Only copies the DataFrame if tz-aware columns are actually present.
     """
+    tz_cols = [
+        c
+        for c in df.columns
+        if pd.api.types.is_datetime64_any_dtype(df[c])
+        and hasattr(df[c].dt, "tz")
+        and df[c].dt.tz is not None
+    ]
+    if not tz_cols:
+        return df
     df = df.copy()
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            if hasattr(df[col].dt, "tz") and df[col].dt.tz is not None:
-                df[col] = df[col].dt.tz_localize(None)
+    for col in tz_cols:
+        df[col] = df[col].dt.tz_localize(None)
     return df

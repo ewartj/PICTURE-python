@@ -68,7 +68,9 @@ def prepress(
         params = spec.get("params", {})
         title = spec.get("section_title")
 
-        logger.debug("prepress: rendering %s with params=%s", filename, list(params.keys()))
+        logger.debug(
+            "prepress: rendering %s with params=%s", filename, list(params.keys())
+        )
         try:
             tmpl = env.get_template(filename)
             rendered = tmpl.render(**params)

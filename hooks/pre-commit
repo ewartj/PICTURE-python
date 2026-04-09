@@ -63,7 +63,7 @@ STAGED_CORE_API=$(echo "$STAGED_PY" | grep -E '^(core|api)/' || true)
 if [ -z "$STAGED_CORE_API" ]; then
   pass "No core/ or api/ files staged"
 else
-  if python3 -m mypy core/ api/ --ignore-missing-imports --no-error-summary --quiet 2>&1; then
+  if python3 -m mypy core/ api/ --ignore-missing-imports --no-error-summary 2>&1; then
     pass "mypy clean"
   else
     fail "mypy found type errors"

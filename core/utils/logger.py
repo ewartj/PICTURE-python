@@ -25,10 +25,10 @@ def get_system_info() -> dict:
     """
     return {
         "python_version": sys.version,
-        "platform":       platform.platform(),
-        "os":             sys.platform,
-        "processor":      platform.processor() or "unknown",
-        "hostname":       platform.node(),
+        "platform": platform.platform(),
+        "os": sys.platform,
+        "processor": platform.processor() or "unknown",
+        "hostname": platform.node(),
     }
 
 
@@ -47,6 +47,7 @@ def get_packages_info() -> list[dict]:
     """
     try:
         from importlib.metadata import packages_distributions, version
+
         pkgs = []
         seen: set[str] = set()
         for dist_name in packages_distributions().values():

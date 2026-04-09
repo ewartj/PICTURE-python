@@ -20,20 +20,20 @@ from core.cohort.models import CohortDefinition, CohortFilterStep
 from core.rdv.lookups import get_rdv_label, get_variable_label
 
 _INCLUSION_PHRASES: dict[str, str] = {
-    "ever":             "had",
-    "never":            "never had",
+    "ever": "had",
+    "never": "never had",
     "fully_concurrent": "had (concurrent)",
-    "after_first":      "had (after first occurrence of)",
-    "on_first":         "had (at first occurrence of)",
+    "after_first": "had (after first occurrence of)",
+    "on_first": "had (at first occurrence of)",
 }
 
 _QUERY_PHRASES: dict[str, str] = {
-    "str_matches":      "equal to",
-    "str_contains":     "containing",
-    "str_starts":       "starting with",
-    "date_between":     "between dates",
-    "numeric_between":  "between",
-    "age_between":      "aged between",
+    "str_matches": "equal to",
+    "str_contains": "containing",
+    "str_starts": "starting with",
+    "date_between": "between dates",
+    "numeric_between": "between",
+    "age_between": "aged between",
 }
 
 
@@ -62,7 +62,9 @@ def describe_step(step: CohortFilterStep) -> str:
     elif len(val) == 1:
         val_str = str(val[0])
     elif len(val) == 2 and step.query_type in (
-        "date_between", "numeric_between", "age_between"
+        "date_between",
+        "numeric_between",
+        "age_between",
     ):
         val_str = f"{val[0]} – {val[1]}"
     else:

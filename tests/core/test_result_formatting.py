@@ -16,13 +16,16 @@ from core.analytics.result_formatting import (
 # head_df_cohort
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def df_results():
-    return pd.DataFrame({
-        "event":   ["Asthma", "Diabetes", "Hypertension", "COPD", "Pneumonia"],
-        "Female":  [50.0, 30.0, 20.0, 10.0, 5.0],
-        "Male":    [40.0, 35.0, 25.0, 15.0, 8.0],
-    })
+    return pd.DataFrame(
+        {
+            "event": ["Asthma", "Diabetes", "Hypertension", "COPD", "Pneumonia"],
+            "Female": [50.0, 30.0, 20.0, 10.0, 5.0],
+            "Male": [40.0, 35.0, 25.0, 15.0, 8.0],
+        }
+    )
 
 
 def test_head_df_cohort_returns_top_n(df_results):
@@ -73,6 +76,7 @@ def test_head_df_cohort_unknown_col_falls_back(df_results):
 # tabulate_df_cohort
 # ---------------------------------------------------------------------------
 
+
 def test_tabulate_prettifies_column_names():
     df = pd.DataFrame({"event_count": [1, 2], "cohort_label": ["A", "B"]})
     result = tabulate_df_cohort(df)
@@ -89,6 +93,7 @@ def test_tabulate_formats_percent_columns():
 
 def test_tabulate_handles_nan_in_percent():
     import numpy as np
+
     df = pd.DataFrame({"event": ["A"], "pct": [float("nan")]})
     result = tabulate_df_cohort(df, cols_percent=["pct"])
     assert result["Pct"].iloc[0] == ""
@@ -109,6 +114,7 @@ def test_tabulate_returns_dataframe():
 # format_percent
 # ---------------------------------------------------------------------------
 
+
 def test_format_percent_fraction():
     assert format_percent(0.753) == "75.3%"
 
@@ -123,6 +129,7 @@ def test_format_percent_zero():
 
 def test_format_percent_nan_returns_empty():
     import numpy as np
+
     assert format_percent(float("nan")) == ""
 
 

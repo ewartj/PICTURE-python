@@ -31,6 +31,7 @@ DATELIST_YAML = FIXTURES / "datelist_app.yaml"
 # Top-level fields
 # ---------------------------------------------------------------------------
 
+
 class TestTopLevelFields:
     def test_title(self):
         cfg = load_app_config(SAMPLE_YAML)
@@ -77,6 +78,7 @@ class TestTopLevelFields:
 # initialCohorts
 # ---------------------------------------------------------------------------
 
+
 class TestInitialCohorts:
     def setup_method(self):
         self.cfg = load_app_config(SAMPLE_YAML)
@@ -111,6 +113,7 @@ class TestInitialCohorts:
 # Analysis tabs and methods
 # ---------------------------------------------------------------------------
 
+
 class TestAnalysis:
     def setup_method(self):
         self.cfg = load_app_config(SAMPLE_YAML)
@@ -129,21 +132,15 @@ class TestAnalysis:
         assert method.fn == "tpl_pde_all"
         assert method.rpkg == "driveanalytics"
 
-    def test_diagnoses_has_two_methods(self):
+    def test_diagnoses_has_one_method(self):
         tab = self.cfg.analysis[1]
-        assert len(tab.method_list) == 2
+        assert len(tab.method_list) == 1
 
     def test_frequency_method_params(self):
         method = self.cfg.analysis[1].method_list[0]
         assert method.fn == "gen_frequency_analysis"
         assert method.tab_lbl == "Common diagnoses"
         assert method.params["event_col"] == "diag_name"
-
-    def test_distribution_boolean_params_normalised(self):
-        """R-style TRUE/FALSE strings must be converted to Python booleans."""
-        method = self.cfg.analysis[1].method_list[1]
-        assert method.params["side_by_side"] is True
-        assert method.params["calc_length"] is False
 
     def test_rdv_params(self):
         method = self.cfg.analysis[1].method_list[0]
@@ -157,6 +154,7 @@ class TestAnalysis:
 # ---------------------------------------------------------------------------
 # Outputs
 # ---------------------------------------------------------------------------
+
 
 class TestOutputs:
     def test_interactive_true(self):
@@ -172,16 +170,18 @@ class TestOutputs:
 # all_rdv_names property
 # ---------------------------------------------------------------------------
 
+
 class TestAllRdvNames:
     def test_rdv_names_extracted(self):
         cfg = load_app_config(SAMPLE_YAML)
-        # df_pde, df_loc, df_dia, df_wst → pde, loc, dia, wst
-        assert cfg.all_rdv_names == {"pde", "loc", "dia", "wst"}
+        # df_pde, df_loc, df_dia → pde, loc, dia
+        assert cfg.all_rdv_names == {"pde", "loc", "dia"}
 
 
 # ---------------------------------------------------------------------------
 # !datelist custom tag
 # ---------------------------------------------------------------------------
+
 
 class TestDatelistTag:
     def test_datelist_parsed_as_datetimes(self):
@@ -202,6 +202,7 @@ class TestDatelistTag:
 # load_app_configs (multiple files)
 # ---------------------------------------------------------------------------
 
+
 class TestLoadAppConfigs:
     def test_ids_are_sequential(self):
         configs = load_app_configs([SAMPLE_YAML, DATELIST_YAML])
@@ -220,6 +221,7 @@ class TestLoadAppConfigs:
 # Minimal YAML (inline)
 # ---------------------------------------------------------------------------
 
+
 class TestMinimalYaml:
     def test_minimal_valid(self, tmp_path):
         p = tmp_path / "minimal.yaml"
@@ -233,12 +235,14 @@ class TestMinimalYaml:
 
     def test_analysis_with_no_methods(self, tmp_path):
         p = tmp_path / "notabs.yaml"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             title: No Methods
             analysis:
               - tab: Empty Tab
                 methodList: []
-        """))
+        """)
+        )
         cfg = load_app_config(p)
         assert len(cfg.analysis) == 1
         assert cfg.analysis[0].method_list == []
@@ -247,6 +251,7 @@ class TestMinimalYaml:
 # ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
+
 
 class TestErrors:
     def test_missing_file_raises(self):

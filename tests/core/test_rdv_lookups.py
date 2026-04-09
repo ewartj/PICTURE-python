@@ -21,6 +21,7 @@ from core.rdv.lookups import (
 # RDV-level
 # ---------------------------------------------------------------------------
 
+
 def test_get_rdv_label_known():
     assert get_rdv_label("pde") == "demographics"
 
@@ -57,6 +58,7 @@ def test_list_rdv_codes_nonempty():
 # Variable-level
 # ---------------------------------------------------------------------------
 
+
 def test_get_variable_label_known():
     assert get_variable_label("pde", "sex_name") == "sex"
 
@@ -75,7 +77,9 @@ def test_get_variable_filter_type_select_column():
 
 
 def test_get_variable_filter_type_date_column():
-    assert get_variable_filter_type("dia_conditions", "start_datetime") == "date_between"
+    assert (
+        get_variable_filter_type("dia_conditions", "start_datetime") == "date_between"
+    )
 
 
 def test_get_variable_filter_type_unknown_returns_none():
@@ -101,6 +105,7 @@ def test_get_variable_input_type_unknown_returns_none():
 # ---------------------------------------------------------------------------
 # get_rdv_variables
 # ---------------------------------------------------------------------------
+
 
 def test_get_rdv_variables_returns_list():
     variables = get_rdv_variables("pde")

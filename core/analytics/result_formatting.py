@@ -88,17 +88,12 @@ def tabulate_df_cohort(
     df = df.copy()
 
     # Format percent columns
-    for col in (cols_percent or []):
+    for col in cols_percent or []:
         if col in df.columns:
-            df[col] = df[col].apply(
-                lambda v: f"{v:.2f}%" if pd.notna(v) else ""
-            )
+            df[col] = df[col].apply(lambda v: f"{v:.2f}%" if pd.notna(v) else "")
 
     # Prettify column names
-    df.columns = [
-        c.replace("_", " ").replace(".", " ").title()
-        for c in df.columns
-    ]
+    df.columns = [c.replace("_", " ").replace(".", " ").title() for c in df.columns]
 
     return df
 

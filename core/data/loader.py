@@ -20,8 +20,41 @@ from core.data.rdv import RDV_FILE_MAP, RDV_SCHEMAS, RdvName
 logger = logging.getLogger(__name__)
 
 # Columns to parse as datetimes on load (if present)
-_DATETIME_COLS = ["start_datetime", "end_datetime", "birth_date", "death_date",
-                  "entry_date", "exit_date"]
+_DATETIME_COLS = [
+    "start_datetime",
+    "end_datetime",
+    "birth_date",
+    "death_date",
+    "entry_date",
+    "exit_date",
+]
+
+# String columns to convert to Categorical after loading.
+# Categorical uses ~8 bytes/value instead of ~64 bytes (Python object ptr),
+# and makes groupby/merge significantly faster on large DataFrames.
+_CATEGORICAL_COLS = [
+    # Demographics
+    "sex_name",
+    "ethnicity_name",
+    "death_status",
+    # Diagnoses
+    "diag_name",
+    "diagnosis_status",
+    "icd10_chapter",
+    "icd10_section",
+    "icd10_code",
+    # Clinical
+    "medication_name",
+    "procedure_name",
+    "ward_code",
+    "ward_name",
+    "flowsheet_measure_name",
+    "component_name",
+    "result_status",
+    "abnormal_flag",
+    # Cohort labels (added dynamically, but include here for re-loads)
+    "cohort",
+]
 
 
 def load_rdv(
@@ -66,6 +99,7 @@ def load_rdv(
         )
 
     df = _parse_datetimes(df)
+    df = _optimise_dtypes(df)
     _validate(rdv, df)
     logger.info("Loaded %s: %d rows, %d cols", rdv, len(df), len(df.columns))
     return df
@@ -87,7 +121,7 @@ def load_all_rdvs(
         Dict mapping RDV name → DataFrame (only RDVs where a file was found).
     """
     data_dir = Path(data_dir)
-    targets = rdvs or list(RDV_FILE_MAP.keys())
+    targets: list[RdvName] = rdvs if rdvs is not None else list(RDV_FILE_MAP.keys())  # type: ignore[arg-type]
     result: dict[str, pd.DataFrame] = {}
 
     for rdv in targets:
@@ -103,10 +137,24 @@ def load_all_rdvs(
 # Private helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_datetimes(df: pd.DataFrame) -> pd.DataFrame:
     for col in _DATETIME_COLS:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce", utc=False)
+    return df
+
+
+def _optimise_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert known low-cardinality string columns to Categorical.
+
+    Reduces memory ~8× for these columns and speeds up groupby/merge.
+    Only converts columns that are actually present and still object dtype
+    (Parquet may already carry richer types).
+    """
+    for col in _CATEGORICAL_COLS:
+        if col in df.columns and df[col].dtype == object:
+            df[col] = df[col].astype("category")
     return df
 
 
@@ -116,6 +164,4 @@ def _validate(rdv: RdvName, df: pd.DataFrame) -> None:
         return
     missing = [c for c in schema.required_cols if c not in df.columns]
     if missing:
-        logger.warning(
-            "RDV '%s' is missing expected columns: %s", rdv, missing
-        )
+        logger.warning("RDV '%s' is missing expected columns: %s", rdv, missing)

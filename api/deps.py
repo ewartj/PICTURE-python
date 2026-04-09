@@ -13,6 +13,8 @@ from __future__ import annotations
 import functools
 import logging
 from pathlib import Path
+
+import pandas as pd
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Query
@@ -30,6 +32,7 @@ _CONFIG_PATH = Path(__file__).parent.parent / "config" / "config.yaml"
 # Platform config
 # ---------------------------------------------------------------------------
 
+
 @functools.lru_cache(maxsize=1)
 def get_platform_config() -> PlatformConfig:
     """Load and cache the platform config.yaml."""
@@ -43,13 +46,16 @@ def get_config() -> dict:
         "data_dir": str(cfg.data_dir) if cfg.data_dir else None,
         "n_max": cfg.n_max,
         "infrastructure": cfg.infrastructure,
-        "external_data_dir": str(cfg.external_data_dir) if cfg.external_data_dir else None,
+        "external_data_dir": str(cfg.external_data_dir)
+        if cfg.external_data_dir
+        else None,
     }
 
 
 # ---------------------------------------------------------------------------
 # App configs
 # ---------------------------------------------------------------------------
+
 
 @functools.lru_cache(maxsize=1)
 def _load_app_configs_cached(config_path: Path) -> tuple[AppConfig, ...]:
@@ -76,8 +82,11 @@ def get_app_configs(
 # Data loading dependencies
 # ---------------------------------------------------------------------------
 
+
 def get_data_dir(
-    data_dir: Annotated[Optional[str], Query(description="Override data directory")] = None,
+    data_dir: Annotated[
+        Optional[str], Query(description="Override data directory")
+    ] = None,
     platform: PlatformConfig = Depends(get_platform_config),
 ) -> Path:
     """Resolve the data directory from query param or platform config."""

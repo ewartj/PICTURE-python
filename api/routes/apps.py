@@ -13,7 +13,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import get_app_configs
-from api.schemas.apps import AppConfigDetail, AppConfigSummary, AnalysisTabSchema, AnalysisMethodSchema, CohortSummary, CohortFilterStepSummary, OutputConfigSchema
+from api.schemas.apps import (
+    AppConfigDetail,
+    AppConfigSummary,
+    AnalysisTabSchema,
+    AnalysisMethodSchema,
+    CohortSummary,
+    CohortFilterStepSummary,
+    OutputConfigSchema,
+)
 from core.config.app_config import AppConfig
 
 router = APIRouter(prefix="/apps", tags=["apps"])

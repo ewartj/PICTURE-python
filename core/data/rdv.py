@@ -19,17 +19,17 @@ from typing import Literal
 # ---------------------------------------------------------------------------
 
 RdvName = Literal[
-    "pde",   # Patient Demographics
-    "dia",   # Diagnoses (ICD-10)
-    "adm",   # Hospital Admissions
-    "med",   # Medication Orders
-    "mda",   # Medication Administrations
-    "prc",   # Procedures (OPCS)
-    "flo",   # Flowsheet rows
-    "lab",   # Lab results
-    "tht",   # Theatre list
-    "wst",   # Ward stays
-    "loc",   # Locations
+    "pde",  # Patient Demographics
+    "dia",  # Diagnoses (ICD-10)
+    "adm",  # Hospital Admissions
+    "med",  # Medication Orders
+    "mda",  # Medication Administrations
+    "prc",  # Procedures (OPCS)
+    "flo",  # Flowsheet rows
+    "lab",  # Lab results
+    "tht",  # Theatre list
+    "wst",  # Ward stays
+    "loc",  # Locations
 ]
 
 # Canonical file name prefixes — kept in sync with dummy CSV filenames
@@ -51,6 +51,7 @@ RDV_FILE_MAP: dict[str, str] = {
 @dataclass
 class RdvSchema:
     """Minimal schema description for an RDV."""
+
     name: str
     label: str
     # Columns that must be present (used for validation on load)
@@ -107,7 +108,12 @@ RDV_SCHEMAS: dict[str, RdvSchema] = {
     "lab": RdvSchema(
         name="lab",
         label="Lab Results",
-        required_cols=["project_id", "component_name", "result_value", "start_datetime"],
+        required_cols=[
+            "project_id",
+            "component_name",
+            "result_value",
+            "start_datetime",
+        ],
         has_datetimes=True,
     ),
     "tht": RdvSchema(

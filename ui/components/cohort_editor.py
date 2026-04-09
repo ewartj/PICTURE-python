@@ -13,9 +13,6 @@ Session state keys managed here
 
 from __future__ import annotations
 
-import copy
-from typing import Optional
-
 import pandas as pd
 import streamlit as st
 
@@ -26,7 +23,7 @@ from core.cohort.models import (
     CohortFilterStep,
     ResolvedCohort,
 )
-from core.rdv.lookups import get_variable_filter_type, get_variable_input_type
+from core.rdv.lookups import get_variable_filter_type
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -48,23 +45,24 @@ _INCLUSIONS = [
 ]
 
 _INCLUSION_HELP = {
-    "ever":             "Patient had this at any point in their cohort window",
-    "never":            "Exclude patients who had this",
+    "ever": "Patient had this at any point in their cohort window",
+    "never": "Exclude patients who had this",
     "fully_concurrent": "Narrow window to overlap with this event",
-    "after_first":      "Start cohort window from first occurrence of this event",
-    "on_first":         "Pin cohort window to first occurrence of this event",
+    "after_first": "Start cohort window from first occurrence of this event",
+    "on_first": "Pin cohort window to first occurrence of this event",
 }
 
 _QUERY_HELP = {
-    "str_matches":      "Exact match (one of the values)",
-    "str_contains":     "Case-insensitive substring match",
-    "str_starts":       "Value starts with one of the strings",
-    "date_between":     "Date falls in range [from, to]",
-    "numeric_between":  "Number falls in range [lo, hi]",
-    "age_between":      "Patient age (years) at entry falls in range",
+    "str_matches": "Exact match (one of the values)",
+    "str_contains": "Case-insensitive substring match",
+    "str_starts": "Value starts with one of the strings",
+    "date_between": "Date falls in range [from, to]",
+    "numeric_between": "Number falls in range [lo, hi]",
+    "age_between": "Patient age (years) at entry falls in range",
 }
 
 # ── Public entry point ──────────────────────────────────────────────────────────
+
 
 def render(
     app_id: int,
@@ -133,6 +131,7 @@ def render(
 
 
 # ── Per-cohort editor ───────────────────────────────────────────────────────────
+
 
 def _render_cohort_editor(
     ci: int,
@@ -212,7 +211,9 @@ def _render_step_editor(
         # (val is empty), but never override once the user has entered values.
         current_qt = step.get("query_type", "str_matches")
         if not step.get("val"):
-            suggested_qt = get_variable_filter_type(step.get("rdv", ""), step.get("column", ""))
+            suggested_qt = get_variable_filter_type(
+                step.get("rdv", ""), step.get("column", "")
+            )
             if suggested_qt and suggested_qt in _QUERY_TYPES:
                 current_qt = suggested_qt
                 step["query_type"] = current_qt
@@ -221,7 +222,9 @@ def _render_step_editor(
             step["query_type"] = st.selectbox(
                 "Query type",
                 options=_QUERY_TYPES,
-                index=_QUERY_TYPES.index(current_qt) if current_qt in _QUERY_TYPES else 0,
+                index=_QUERY_TYPES.index(current_qt)
+                if current_qt in _QUERY_TYPES
+                else 0,
                 format_func=lambda q: f"{q}  —  {_QUERY_HELP[q]}",
                 key=f"qt_{key}",
             )
@@ -243,7 +246,9 @@ def _render_step_editor(
             step["inclusion"] = st.selectbox(
                 "Inclusion",
                 options=_INCLUSIONS,
-                index=_INCLUSIONS.index(current_inc) if current_inc in _INCLUSIONS else 0,
+                index=_INCLUSIONS.index(current_inc)
+                if current_inc in _INCLUSIONS
+                else 0,
                 format_func=lambda i: f"{i}  —  {_INCLUSION_HELP[i]}",
                 key=f"inc_{key}",
             )
@@ -291,9 +296,7 @@ def _render_val_input(step: dict, rdv_df: pd.DataFrame, key: str) -> list:
     if qt in ("str_matches", "str_contains", "str_starts"):
         # Offer unique column values as multiselect options
         if col and col in rdv_df.columns:
-            unique_vals = sorted(
-                rdv_df[col].dropna().astype(str).unique().tolist()
-            )
+            unique_vals = sorted(rdv_df[col].dropna().astype(str).unique().tolist())
             # Guard against enormous option lists
             if len(unique_vals) > 500:
                 unique_vals = unique_vals[:500]
@@ -320,6 +323,7 @@ def _render_val_input(step: dict, rdv_df: pd.DataFrame, key: str) -> list:
                 return pd.to_datetime(v).date() if v is not None else None
             except Exception:
                 return None
+
         lo = _to_date(current_val[0]) if len(current_val) > 0 else None
         hi = _to_date(current_val[1]) if len(current_val) > 1 else None
         d_cols = st.columns(2)
@@ -336,19 +340,25 @@ def _render_val_input(step: dict, rdv_df: pd.DataFrame, key: str) -> list:
                 return float(v) if v is not None else default
             except (TypeError, ValueError):
                 return default
+
         lo_val = _to_float(current_val[0], 0.0) if len(current_val) > 0 else 0.0
         hi_val = _to_float(current_val[1], 100.0) if len(current_val) > 1 else 100.0
         n_cols = st.columns(2)
         label_lo = "Min age (years)" if qt == "age_between" else "Min"
         label_hi = "Max age (years)" if qt == "age_between" else "Max"
         with n_cols[0]:
-            lo_val = st.number_input(label_lo, value=lo_val, step=1.0, key=f"val_lo_{key}")
+            lo_val = st.number_input(
+                label_lo, value=lo_val, step=1.0, key=f"val_lo_{key}"
+            )
         with n_cols[1]:
-            hi_val = st.number_input(label_hi, value=hi_val, step=1.0, key=f"val_hi_{key}")
+            hi_val = st.number_input(
+                label_hi, value=hi_val, step=1.0, key=f"val_hi_{key}"
+            )
         return [lo_val, hi_val]
 
 
 # ── Apply logic ─────────────────────────────────────────────────────────────────
+
 
 def _apply_cohorts(
     app_id: int,
@@ -363,7 +373,9 @@ def _apply_cohorts(
 
     progress = st.progress(0, text="Resolving cohorts…")
     for i, defn in enumerate(definitions):
-        progress.progress((i + 1) / max(len(definitions), 1), text=f"Resolving '{defn.label}'…")
+        progress.progress(
+            (i + 1) / max(len(definitions), 1), text=f"Resolving '{defn.label}'…"
+        )
         try:
             resolved.append(resolve_cohort(defn, rdvs))
         except Exception as exc:
@@ -385,6 +397,7 @@ def _apply_cohorts(
 
 # ── Dict ↔ CohortDefinition conversion ─────────────────────────────────────────
 
+
 def _cohorts_to_dicts(cohorts: list[CohortDefinition]) -> list[dict]:
     result = []
     for c in cohorts:
@@ -392,14 +405,16 @@ def _cohorts_to_dicts(cohorts: list[CohortDefinition]) -> list[dict]:
         for s in c.config:
             if s.type == "base":
                 continue  # base step is implicit — don't show in UI
-            steps.append({
-                "rdv":        s.rdv or "pde",
-                "column":     s.column or "",
-                "query_type": s.query_type,
-                "val":        list(s.val) if s.val else [],
-                "inclusion":  s.inclusion,
-                "window":     list(s.window) if s.window else [0, 0],
-            })
+            steps.append(
+                {
+                    "rdv": s.rdv or "pde",
+                    "column": s.column or "",
+                    "query_type": s.query_type,
+                    "val": list(s.val) if s.val else [],
+                    "inclusion": s.inclusion,
+                    "window": list(s.window) if s.window else [0, 0],
+                }
+            )
         result.append({"label": c.label, "steps": steps})
     return result
 
@@ -416,15 +431,17 @@ def _dicts_to_cohorts(cohort_dicts: list[dict]) -> list[CohortDefinition]:
                 val = [val]
             val = [str(v) for v in val if v not in ("", "None", None)]
             window = s.get("window") or [0, 0]
-            steps.append(CohortFilterStep(
-                type="filter" if i == 0 else "and",
-                rdv=s.get("rdv") or "pde",
-                column=s.get("column") or "",
-                val=val,
-                inclusion=s.get("inclusion", "ever"),
-                query_type=s.get("query_type", "str_matches"),
-                window=window if window != [0, 0] else None,
-            ))
+            steps.append(
+                CohortFilterStep(
+                    type="filter" if i == 0 else "and",
+                    rdv=s.get("rdv") or "pde",
+                    column=s.get("column") or "",
+                    val=val,
+                    inclusion=s.get("inclusion", "ever"),
+                    query_type=s.get("query_type", "str_matches"),
+                    window=window if window != [0, 0] else None,
+                )
+            )
         definitions.append(CohortDefinition(label=label, config=steps))
     return definitions
 
@@ -435,10 +452,10 @@ def _empty_cohort_dict() -> dict:
 
 def _empty_step_dict() -> dict:
     return {
-        "rdv":        "pde",
-        "column":     "",
+        "rdv": "pde",
+        "column": "",
         "query_type": "str_matches",
-        "val":        [],
-        "inclusion":  "ever",
-        "window":     [0, 0],
+        "val": [],
+        "inclusion": "ever",
+        "window": [0, 0],
     }

@@ -33,6 +33,7 @@ from core.cohort.models import CohortDefinition
 
 # ── Patient info ────────────────────────────────────────────────────────────────
 
+
 def report_patient_info_table(
     project_id: str,
     pde_df: pd.DataFrame,
@@ -72,11 +73,11 @@ def report_patient_info_table(
 
     dob = r.get("birth_date")
     records = [
-        ("Patient ID",  str(project_id)),
-        ("Sex",         str(r.get("sex_name", ""))),
+        ("Patient ID", str(project_id)),
+        ("Sex", str(r.get("sex_name", ""))),
         ("Date of birth", _fmt_date(dob)),
-        ("Age",          _age(dob)),
-        ("Ethnicity",   str(r.get("ethnicity_name", ""))),
+        ("Age", _age(dob)),
+        ("Ethnicity", str(r.get("ethnicity_name", ""))),
     ]
     if "death_date" in r and pd.notna(r["death_date"]):
         records.append(("Date of death", _fmt_date(r["death_date"])))
@@ -86,19 +87,18 @@ def report_patient_info_table(
 
 # ── Cohort info ─────────────────────────────────────────────────────────────────
 
+
 def report_cohort_info_table(cohort_defs: list[CohortDefinition]) -> pd.DataFrame:
     """Return a two-column (Cohort / Description) table of cohort definitions.
 
     Mirrors R ``report_cohort_info_table(cohort_defs)``.
     """
-    records = [
-        (c.label, describe_cohort_short(c))
-        for c in cohort_defs
-    ]
+    records = [(c.label, describe_cohort_short(c)) for c in cohort_defs]
     return pd.DataFrame(records, columns=["Cohort", "Description"])
 
 
 # ── Analysis run info ───────────────────────────────────────────────────────────
+
 
 def report_analysis_info_table(session_string: str = "") -> pd.DataFrame:
     """Return a two-column (Field / Value) table of analysis run metadata.
@@ -117,20 +117,22 @@ def report_analysis_info_table(session_string: str = "") -> pd.DataFrame:
 
     try:
         from importlib.metadata import version
+
         picture_version = version("picture-python")
     except Exception:
         picture_version = "dev"
 
     records = [
         ("PICTURE Version", picture_version),
-        ("Date",            date_str),
-        ("Analyst",         username),
-        ("Report ID",       report_id),
+        ("Date", date_str),
+        ("Analyst", username),
+        ("Report ID", report_id),
     ]
     return pd.DataFrame(records, columns=["Field", "Value"])
 
 
 # ── Dataset info ────────────────────────────────────────────────────────────────
+
 
 def report_dataset_info_table(
     name: str,
@@ -143,6 +145,7 @@ def report_dataset_info_table(
 
     Mirrors R ``report_dataset_info_table(dataset_summary)``.
     """
+
     def _fmt(val) -> str:
         if not val:
             return ""
@@ -156,15 +159,16 @@ def report_dataset_info_table(
         period = f"{_fmt(from_date)} to {_fmt(to_date)}"
 
     records = [
-        ("Name",            name),
-        ("Description",     description),
-        ("Period",          period),
+        ("Name", name),
+        ("Description", description),
+        ("Period", period),
         ("Extraction Date", _fmt(extraction_date)),
     ]
     return pd.DataFrame(records, columns=["Field", "Value"])
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────────
+
 
 def _get_username() -> str:
     """Return the current OS username.  Mirrors R ``get_username()``."""

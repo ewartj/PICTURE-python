@@ -41,16 +41,21 @@ from core.analytics.base import AnalysisBase
 # ---------------------------------------------------------------------------
 
 _ETHNICITY_PATTERNS: list[tuple[str, str]] = [
-    (r"^[A-C]$",    "White"),
-    (r"^[D-G]$",    "Mixed"),
-    (r"^[HJKL]$",   "Asian or Asian British"),
-    (r"^[MNP]$",    "Black or Black British"),
-    (r"^[RS]$",     "Other Ethnic Groups"),
-    (r"^Z$",        "Not Stated"),
+    (r"^[A-C]$", "White"),
+    (r"^[D-G]$", "Mixed"),
+    (r"^[HJKL]$", "Asian or Asian British"),
+    (r"^[MNP]$", "Black or Black British"),
+    (r"^[RS]$", "Other Ethnic Groups"),
+    (r"^Z$", "Not Stated"),
 ]
 _ETHNICITY_ORDER = [
-    "White", "Mixed", "Asian or Asian British",
-    "Black or Black British", "Other Ethnic Groups", "Not Stated", "Unknown",
+    "White",
+    "Mixed",
+    "Asian or Asian British",
+    "Black or Black British",
+    "Other Ethnic Groups",
+    "Not Stated",
+    "Unknown",
 ]
 
 
@@ -85,6 +90,7 @@ def _age_years(event_date: pd.Series, birth_date: pd.Series) -> pd.Series:
 # ---------------------------------------------------------------------------
 # Analytics class
 # ---------------------------------------------------------------------------
+
 
 class CohortCharacteristics(AnalysisBase):
     """Demographic summary table for one or more cohorts.
@@ -125,9 +131,7 @@ class CohortCharacteristics(AnalysisBase):
         # Merge all cohorts into wide format
         merged = cohort_frames[0]
         for frame in cohort_frames[1:]:
-            merged = merged.merge(
-                frame, on=["grouping", "Characteristic"], how="outer"
-            )
+            merged = merged.merge(frame, on=["grouping", "Characteristic"], how="outer")
 
         self._result = merged.reset_index(drop=True)
         return self
@@ -141,23 +145,28 @@ class CohortCharacteristics(AnalysisBase):
         header_vals = list(display.columns)
         cell_vals = [display[c].tolist() for c in display.columns]
 
-        fig = go.Figure(go.Table(
-            header=dict(
-                values=[f"<b>{h}</b>" for h in header_vals],
-                fill_color="#2c3e50",
-                font=dict(color="white", size=12),
-                align="left",
-            ),
-            cells=dict(
-                values=cell_vals,
-                fill_color=[
-                    ["#ecf0f1" if i % 2 == 0 else "white" for i in range(len(display))]
-                    for _ in display.columns
-                ],
-                align="left",
-                font=dict(size=11),
-            ),
-        ))
+        fig = go.Figure(
+            go.Table(
+                header=dict(
+                    values=[f"<b>{h}</b>" for h in header_vals],
+                    fill_color="#2c3e50",
+                    font=dict(color="white", size=12),
+                    align="left",
+                ),
+                cells=dict(
+                    values=cell_vals,
+                    fill_color=[
+                        [
+                            "#ecf0f1" if i % 2 == 0 else "white"
+                            for i in range(len(display))
+                        ]
+                        for _ in display.columns
+                    ],
+                    align="left",
+                    font=dict(size=11),
+                ),
+            )
+        )
         fig.update_layout(margin=dict(l=0, r=0, t=10, b=0))
         return fig
 
@@ -183,6 +192,7 @@ class CohortCharacteristics(AnalysisBase):
 # Per-cohort summary helper
 # ---------------------------------------------------------------------------
 
+
 def _fmt_pct(v: float) -> str:
     return f"{v:.2f} %"
 
@@ -196,33 +206,39 @@ def _summarise_cohort(grp: pd.DataFrame, label: str) -> pd.DataFrame:
     rows: list[dict] = []
 
     # ── N ─────────────────────────────────────────────────────────────────
-    rows.append({
-        "grouping": "N",
-        "Characteristic": "Periods",
-        label: str(len(grp)),
-    })
-    rows.append({
-        "grouping": "N",
-        "Characteristic": "Patients",
-        label: str(grp["project_id"].nunique()),
-    })
+    rows.append(
+        {
+            "grouping": "N",
+            "Characteristic": "Periods",
+            label: str(len(grp)),
+        }
+    )
+    rows.append(
+        {
+            "grouping": "N",
+            "Characteristic": "Patients",
+            label: str(grp["project_id"].nunique()),
+        }
+    )
 
     # ── Sex ───────────────────────────────────────────────────────────────
     if "sex_name" in grp.columns:
         total = len(grp)
         n_female = (grp["sex_name"] == "Female").sum()
-        n_male   = (grp["sex_name"] == "Male").sum()
-        n_other  = total - n_female - n_male
+        n_male = (grp["sex_name"] == "Male").sum()
+        n_other = total - n_female - n_male
         for name, n in [
             ("Female", n_female),
             ("Male", n_male),
             ("Indeterminate / Unknown", n_other),
         ]:
-            rows.append({
-                "grouping": "Sex",
-                "Characteristic": name,
-                label: _fmt_pct(100 * n / total if total else 0),
-            })
+            rows.append(
+                {
+                    "grouping": "Sex",
+                    "Characteristic": name,
+                    label: _fmt_pct(100 * n / total if total else 0),
+                }
+            )
 
     # ── Ethnicity ─────────────────────────────────────────────────────────
     if "ethnicity_group" in grp.columns:
@@ -231,26 +247,30 @@ def _summarise_cohort(grp: pd.DataFrame, label: str) -> pd.DataFrame:
         for eth in _ETHNICITY_ORDER:
             if eth in eth_counts or eth in ("White", "Unknown"):
                 pct = 100 * eth_counts.get(eth, 0) / total if total else 0
-                rows.append({
-                    "grouping": "Ethnic Category",
-                    "Characteristic": eth,
-                    label: _fmt_pct(pct),
-                })
+                rows.append(
+                    {
+                        "grouping": "Ethnic Category",
+                        "Characteristic": eth,
+                        label: _fmt_pct(pct),
+                    }
+                )
 
     # ── Age at cohort entry ────────────────────────────────────────────────
     ages = grp["_age_at_entry"].dropna()
     if len(ages) > 0:
         for name, val in [
-            ("Minimum",         ages.clip(lower=0).min()),
+            ("Minimum", ages.clip(lower=0).min()),
             ("25th Percentile", ages.quantile(0.25)),
-            ("Median",          ages.median()),
+            ("Median", ages.median()),
             ("75th Percentile", ages.quantile(0.75)),
-            ("Maximum",         ages.max()),
+            ("Maximum", ages.max()),
         ]:
-            rows.append({
-                "grouping": "Age at Cohort Entry (years)",
-                "Characteristic": name,
-                label: _fmt_yrs(val),
-            })
+            rows.append(
+                {
+                    "grouping": "Age at Cohort Entry (years)",
+                    "Characteristic": name,
+                    label: _fmt_yrs(val),
+                }
+            )
 
     return pd.DataFrame(rows)

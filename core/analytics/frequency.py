@@ -58,25 +58,22 @@ class FrequencyAnalysis(AnalysisBase):
     def compute(self) -> "FrequencyAnalysis":
         logger.info("FrequencyAnalysis.compute — event_col=%s", self.event_col)
 
-        df = self.df_rdv.copy()
-
-        # Drop rows without an event value
-        df = df.dropna(subset=[self.event_col])
-
-        # Deduplicate: one row per (cohort_id, event) — mirrors R's distinct()
+        # Select only needed columns before copying to avoid holding the full RDV.
+        id_col = "cohort_id" if "cohort_id" in self.df_rdv.columns else "project_id"
+        df = (
+            self.df_rdv[[id_col, self.event_col, self.cohort_col]]
+            .dropna(subset=[self.event_col])
+            .copy()
+        )
         df["_event"] = df[self.event_col].astype(str)
         df["_cohort"] = df[self.cohort_col].astype(str)
-        df = df[["cohort_id", "_event", "_cohort"]].drop_duplicates()
+        df = df[[id_col, "_event", "_cohort"]].drop_duplicates()
 
         # Cohort sizes (denominator)
         sizes = self.cohort_sizes()
 
         # Count per (cohort, event)
-        counts = (
-            df.groupby(["_cohort", "_event"])
-            .size()
-            .reset_index(name="count")
-        )
+        counts = df.groupby(["_cohort", "_event"]).size().reset_index(name="count")
         counts = counts.merge(
             sizes.reset_index().rename(columns={self.cohort_col: "_cohort"}),
             on="_cohort",
@@ -123,8 +120,9 @@ class FrequencyAnalysis(AnalysisBase):
         plot_df["event"] = plot_df["event"].str[:60]  # truncate long labels
 
         # Melt to long form for plotly
-        melted = plot_df.melt(id_vars="event", value_vars=value_cols,
-                              var_name="cohort", value_name=value)
+        melted = plot_df.melt(
+            id_vars="event", value_vars=value_cols, var_name="cohort", value_name=value
+        )
         melted["cohort"] = melted["cohort"].str.removesuffix(col_suffix)
 
         scale = 100 if value == "frequency" else 1

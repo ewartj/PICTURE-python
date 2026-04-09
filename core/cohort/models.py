@@ -42,10 +42,11 @@ class CohortFilterStep:
 
     Mirrors one row of the YAML ``initialCohorts[].config`` list.
     """
+
     type: Literal["base", "filter", "and"]
-    rdv: Optional[str] = None           # e.g. "pde", "dia"
-    column: Optional[str] = None        # column name in the RDV
-    val: Optional[list] = None          # filter value(s)
+    rdv: Optional[str] = None  # e.g. "pde", "dia"
+    column: Optional[str] = None  # column name in the RDV
+    val: Optional[list] = None  # filter value(s)
     inclusion: Inclusion = "ever"
     query_type: QueryType = "str_matches"
     window: Optional[list[int]] = None  # [days_before, days_after]
@@ -66,6 +67,7 @@ class CohortDefinition:
             column: sex_name
             query_type: str_matches
     """
+
     label: str
     config: list[CohortFilterStep] = field(default_factory=list)
 
@@ -80,6 +82,7 @@ class ResolvedCohort:
         - exit_date
         - cohort_id   (unique per patient-period, "{project_id}-{n:06d}")
     """
+
     label: str
     patient_list: pd.DataFrame
     n_patients: int = 0
@@ -98,7 +101,9 @@ def cohort_definition_from_yaml(raw: dict) -> CohortDefinition:
             type=step.get("type", "filter"),
             rdv=step.get("rdv"),
             column=step.get("column"),
-            val=step.get("val") if isinstance(step.get("val"), list) else [step.get("val")],
+            val=step.get("val")
+            if isinstance(step.get("val"), list)
+            else [step.get("val")],
             inclusion=step.get("inclusion", "ever"),
             query_type=step.get("query_type", "str_matches"),
             window=step.get("window"),

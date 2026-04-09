@@ -54,8 +54,7 @@ def render(
 
     if pde_name not in rdvs:
         st.error(
-            f"Demographics RDV `{pde_name}` not found. "
-            f"Available RDVs: {list(rdvs.keys())}"
+            f"Demographics RDV `{pde_name}` not found. Available RDVs: {list(rdvs.keys())}"
         )
         return
 
@@ -79,9 +78,15 @@ def render(
     # ------------------------------------------------------------------
     # 5 sub-tabs
     # ------------------------------------------------------------------
-    tab_overview, tab_patients, tab_sex, tab_ethnicity, tab_age = st.tabs([
-        "Overview", "Patient List", "Sex", "Ethnicity", "Age at Entry",
-    ])
+    tab_overview, tab_patients, tab_sex, tab_ethnicity, tab_age = st.tabs(
+        [
+            "Overview",
+            "Patient List",
+            "Sex",
+            "Ethnicity",
+            "Age at Entry",
+        ]
+    )
 
     # ── 1. Overview ───────────────────────────────────────────────────
     with tab_overview:
@@ -99,9 +104,11 @@ def render(
         cohort_cols = [c for c in display.columns if c != "Characteristic"]
 
         # Render as a Plotly table so we can style section headers
-        header_mask = display[cohort_cols].apply(
-            lambda col: col == "", axis=0
-        ).all(axis=1) if cohort_cols else pd.Series(False, index=display.index)
+        header_mask = (
+            display[cohort_cols].apply(lambda col: col == "", axis=0).all(axis=1)
+            if cohort_cols
+            else pd.Series(False, index=display.index)
+        )
 
         row_colours = []
         for is_header in header_mask:
@@ -109,47 +116,60 @@ def render(
 
         font_colours = ["white" if h else "black" for h in header_mask]
 
-        fig = go.Figure(go.Table(
-            header=dict(
-                values=[f"<b>{c}</b>" for c in display.columns],
-                fill_color="#2c3e50",
-                font=dict(color="white", size=12),
-                align="left",
-            ),
-            cells=dict(
-                values=[display[c].tolist() for c in display.columns],
-                fill_color=[
-                    ["#2c3e50" if h else ("#ecf0f1" if i % 2 == 0 else "white")
-                     for i, h in enumerate(header_mask)]
-                    for _ in display.columns
-                ],
-                font=dict(
-                    color=[font_colours for _ in display.columns],
-                    size=11,
+        fig = go.Figure(
+            go.Table(
+                header=dict(
+                    values=[f"<b>{c}</b>" for c in display.columns],
+                    fill_color="#2c3e50",
+                    font=dict(color="white", size=12),
+                    align="left",
                 ),
-                align="left",
-            ),
-        ))
+                cells=dict(
+                    values=[display[c].tolist() for c in display.columns],
+                    fill_color=[
+                        [
+                            "#2c3e50" if h else ("#ecf0f1" if i % 2 == 0 else "white")
+                            for i, h in enumerate(header_mask)
+                        ]
+                        for _ in display.columns
+                    ],
+                    font=dict(
+                        color=[font_colours for _ in display.columns],
+                        size=11,
+                    ),
+                    align="left",
+                ),
+            )
+        )
         fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=600)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, width="stretch")
 
     # ── 2. Patient List ───────────────────────────────────────────────
     with tab_patients:
-        show_cols = [c for c in [
-            "project_id", "birth_date", "death_date",
-            "entry_date", "exit_date", "cohort",
-        ] if c in df_pde.columns]
+        show_cols = [
+            c
+            for c in [
+                "project_id",
+                "birth_date",
+                "death_date",
+                "entry_date",
+                "exit_date",
+                "cohort",
+            ]
+            if c in df_pde.columns
+        ]
 
         # Deduplicate to one row per patient per cohort period
         df_list = df_pde[show_cols].drop_duplicates()
 
         # Prettify column names
-        df_list.columns = [
-            c.replace("_", " ").title() for c in df_list.columns
-        ]
+        df_list.columns = [c.replace("_", " ").title() for c in df_list.columns]
 
-        st.caption(f"{len(df_list):,} rows · {df_list['Project Id'].nunique() if 'Project Id' in df_list.columns else '?'} unique patients")
-        st.dataframe(df_list, width='stretch')
+        n_patients = (
+            df_list["Project Id"].nunique() if "Project Id" in df_list.columns else "?"
+        )
+        st.caption(f"{len(df_list):,} rows · {n_patients} unique patients")
+        st.dataframe(df_list, use_container_width=True)
 
     # ── 3. Sex ────────────────────────────────────────────────────────
     with tab_sex:
@@ -164,11 +184,11 @@ def render(
                         col="sex_name",
                     )
                     sex_analysis.compute()
-                    st.plotly_chart(sex_analysis.plot(), width='stretch')
+                    st.plotly_chart(sex_analysis.plot(), width="stretch")
                     if sex_analysis._test_result:
                         st.caption(sex_analysis._test_result)
                     with st.expander("Table"):
-                        st.dataframe(sex_analysis.tabulate(), width='stretch')
+                        st.dataframe(sex_analysis.tabulate(), width="stretch")
                 except Exception as exc:
                     st.error(f"Sex analysis failed: {exc}")
 
@@ -186,11 +206,11 @@ def render(
                         col="ethnicity_group",
                     )
                     eth_analysis.compute()
-                    st.plotly_chart(eth_analysis.plot(), width='stretch')
+                    st.plotly_chart(eth_analysis.plot(), width="stretch")
                     if eth_analysis._test_result:
                         st.caption(eth_analysis._test_result)
                     with st.expander("Table"):
-                        st.dataframe(eth_analysis.tabulate(), width='stretch')
+                        st.dataframe(eth_analysis.tabulate(), width="stretch")
                 except Exception as exc:
                     st.error(f"Ethnicity analysis failed: {exc}")
 
@@ -215,18 +235,22 @@ def render(
 
                     fig = go.Figure()
                     for cohort_label in sorted(df_age["cohort"].unique()):
-                        ages = df_age[df_age["cohort"] == cohort_label]["age_at_entry"].dropna()
-                        fig.add_trace(go.Box(
-                            y=ages,
-                            name=str(cohort_label),
-                            boxpoints="outliers",
-                        ))
+                        ages = df_age[df_age["cohort"] == cohort_label][
+                            "age_at_entry"
+                        ].dropna()
+                        fig.add_trace(
+                            go.Box(
+                                y=ages,
+                                name=str(cohort_label),
+                                boxpoints="outliers",
+                            )
+                        )
 
                     fig.update_layout(
                         title="Age at Cohort Entry",
                         yaxis_title="Age (years)",
                         xaxis_title="Cohort",
                     )
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, width="stretch")
                 except Exception as exc:
                     st.error(f"Age distribution failed: {exc}")
