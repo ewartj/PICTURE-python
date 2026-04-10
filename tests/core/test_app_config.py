@@ -235,14 +235,12 @@ class TestMinimalYaml:
 
     def test_analysis_with_no_methods(self, tmp_path):
         p = tmp_path / "notabs.yaml"
-        p.write_text(
-            textwrap.dedent("""\
+        p.write_text(textwrap.dedent("""\
             title: No Methods
             analysis:
               - tab: Empty Tab
                 methodList: []
-        """)
-        )
+        """))
         cfg = load_app_config(p)
         assert len(cfg.analysis) == 1
         assert cfg.analysis[0].method_list == []

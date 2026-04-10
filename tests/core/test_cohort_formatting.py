@@ -62,9 +62,7 @@ def test_date_between_phrase():
 
 
 def test_numeric_between_phrase():
-    step = _step(
-        rdv="wst", column="ward_stay_days", query_type="numeric_between", val=[5, 30]
-    )
+    step = _step(rdv="wst", column="ward_stay_days", query_type="numeric_between", val=[5, 30])
     result = describe_step(step)
     assert "between" in result
     assert "5" in result

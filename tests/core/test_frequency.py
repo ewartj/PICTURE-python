@@ -12,7 +12,6 @@ import pytest
 
 from core.analytics.frequency import FrequencyAnalysis
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -23,9 +22,7 @@ def df_pde():
     return pd.DataFrame(
         {
             "project_id": ["P001", "P002", "P003", "P004"],
-            "birth_date": pd.to_datetime(
-                ["1980-01-01", "1990-06-15", "1975-03-20", "2000-11-05"]
-            ),
+            "birth_date": pd.to_datetime(["1980-01-01", "1990-06-15", "1975-03-20", "2000-11-05"]),
             "sex_name": ["Female", "Male", "Female", "Male"],
             "death_date": [None, None, None, None],
             "cohort": ["All", "All", "All", "All"],

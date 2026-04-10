@@ -2,11 +2,45 @@
 
 from __future__ import annotations
 
+import logging
+import traceback
+from contextlib import contextmanager
+from typing import Generator
+
 import pandas as pd
 import streamlit as st
 
-from core.cohort.filters import apply_cohorts_to_rdv
 from core.cohort.models import ResolvedCohort
+from core.services.analytics_runner import cohorted_rdv
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def handle_analysis_errors(label: str) -> Generator[None, None, None]:
+    """Context manager that catches exceptions, logs them, and shows an st.error.
+
+    Replaces the repeated try/except pattern in every UI component so that
+    error handling is consistent and stack traces are preserved in logs.
+
+    Usage::
+
+        with handle_analysis_errors("Sex analysis"):
+            obj = CategoricalRatios(...).compute()
+            st.plotly_chart(obj.plot())
+
+    Args:
+        label: Human-readable name shown in the error message.
+    """
+    try:
+        yield
+    except Exception as exc:
+        logger.exception("%s failed", label)
+        st.error(f"{label} failed: {exc}")
+        st.caption(
+            "Stack trace logged. Expand below for details.",
+            help=traceback.format_exc(),
+        )
 
 
 def evict_stale_cache(prefix: str, current_key: str) -> None:
@@ -37,6 +71,9 @@ def get_cohorted_rdv(
     All analysis components on the same tab share one copy of the cohorted
     DataFrame instead of each building their own.
 
+    Delegates to :func:`core.services.analytics_runner.cohorted_rdv` so the
+    cohort-application logic lives in exactly one place.
+
     Args:
         rdv_name:         RDV identifier used as part of the cache key.
         rdv_df:           The raw (un-cohorted) RDV DataFrame.
@@ -50,12 +87,6 @@ def get_cohorted_rdv(
     evict_stale_cache(f"_cohorted:{rdv_name}:", cache_key)
 
     if cache_key not in st.session_state:
-        if resolved_cohorts:
-            df = apply_cohorts_to_rdv(rdv_df, resolved_cohorts)
-        else:
-            df = rdv_df.assign(cohort="All")
-            if "cohort_id" not in df.columns:
-                df = df.assign(cohort_id=df["project_id"].astype(str))
-        st.session_state[cache_key] = df
+        st.session_state[cache_key] = cohorted_rdv(rdv_df, resolved_cohorts)
 
     return st.session_state[cache_key]

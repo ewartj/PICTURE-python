@@ -29,9 +29,10 @@ from core.analytics.cohort_characteristics import (
     _add_ethnicity_group,
     _age_years,
 )
-from core.cohort.filters import apply_cohorts_to_rdv
 from core.cohort.models import ResolvedCohort
 from core.config.app_config import AnalysisMethod
+from core.services.analytics_runner import cohorted_rdv
+from ui.components import handle_analysis_errors
 
 
 def render(
@@ -53,9 +54,7 @@ def render(
     pde_name = re.sub(r"^df_", "", pde_param)
 
     if pde_name not in rdvs:
-        st.error(
-            f"Demographics RDV `{pde_name}` not found. Available RDVs: {list(rdvs.keys())}"
-        )
+        st.error(f"Demographics RDV `{pde_name}` not found. Available RDVs: {list(rdvs.keys())}")
         return
 
     df_pde_raw = rdvs[pde_name]
@@ -63,13 +62,7 @@ def render(
     # ------------------------------------------------------------------
     # Apply cohorts to pde
     # ------------------------------------------------------------------
-    if resolved_cohorts:
-        df_pde = apply_cohorts_to_rdv(df_pde_raw, resolved_cohorts)
-    else:
-        df_pde = df_pde_raw.copy()
-        df_pde["cohort"] = "All"
-        if "cohort_id" not in df_pde.columns:
-            df_pde["cohort_id"] = df_pde["project_id"].astype(str)
+    df_pde = cohorted_rdv(df_pde_raw, resolved_cohorts)
 
     if df_pde.empty:
         st.warning("No patients matched the cohort criteria in the demographics RDV.")
@@ -90,13 +83,10 @@ def render(
 
     # ── 1. Overview ───────────────────────────────────────────────────
     with tab_overview:
-        with st.spinner("Computing cohort characteristics…"):
-            try:
+        with handle_analysis_errors("Cohort characteristics"):
+            with st.spinner("Computing cohort characteristics…"):
                 chars = CohortCharacteristics(df_rdv=df_pde, df_pde=df_pde)
                 chars.compute()
-            except Exception as exc:
-                st.error(f"Failed to compute cohort characteristics: {exc}")
-                return
 
         display = chars._display_df()
 
@@ -165,9 +155,7 @@ def render(
         # Prettify column names
         df_list.columns = [c.replace("_", " ").title() for c in df_list.columns]
 
-        n_patients = (
-            df_list["Project Id"].nunique() if "Project Id" in df_list.columns else "?"
-        )
+        n_patients = df_list["Project Id"].nunique() if "Project Id" in df_list.columns else "?"
         st.caption(f"{len(df_list):,} rows · {n_patients} unique patients")
         st.dataframe(df_list, use_container_width=True)
 
@@ -176,8 +164,8 @@ def render(
         if "sex_name" not in df_pde.columns:
             st.info("`sex_name` column not found in the demographics RDV.")
         else:
-            with st.spinner("Computing sex breakdown…"):
-                try:
+            with handle_analysis_errors("Sex analysis"):
+                with st.spinner("Computing sex breakdown…"):
                     sex_analysis = CategoricalRatios(
                         df_rdv=df_pde,
                         df_pde=df_pde,
@@ -189,8 +177,6 @@ def render(
                         st.caption(sex_analysis._test_result)
                     with st.expander("Table"):
                         st.dataframe(sex_analysis.tabulate(), width="stretch")
-                except Exception as exc:
-                    st.error(f"Sex analysis failed: {exc}")
 
     # ── 4. Ethnicity ──────────────────────────────────────────────────
     with tab_ethnicity:
@@ -198,8 +184,8 @@ def render(
         if "ethnicity_group" not in df_pde_eth.columns:
             st.info("No ethnicity column found in the demographics RDV.")
         else:
-            with st.spinner("Computing ethnicity breakdown…"):
-                try:
+            with handle_analysis_errors("Ethnicity analysis"):
+                with st.spinner("Computing ethnicity breakdown…"):
                     eth_analysis = CategoricalRatios(
                         df_rdv=df_pde_eth,
                         df_pde=df_pde_eth,
@@ -211,8 +197,6 @@ def render(
                         st.caption(eth_analysis._test_result)
                     with st.expander("Table"):
                         st.dataframe(eth_analysis.tabulate(), width="stretch")
-                except Exception as exc:
-                    st.error(f"Ethnicity analysis failed: {exc}")
 
     # ── 5. Age at Cohort Entry ────────────────────────────────────────
     with tab_age:
@@ -226,8 +210,8 @@ def render(
                 "columns in the demographics RDV."
             )
         else:
-            with st.spinner("Computing age distribution…"):
-                try:
+            with handle_analysis_errors("Age distribution"):
+                with st.spinner("Computing age distribution…"):
                     df_age = df_pde.copy()
                     df_age["age_at_entry"] = _age_years(
                         df_age[entry_col], df_age["birth_date"]
@@ -235,9 +219,7 @@ def render(
 
                     fig = go.Figure()
                     for cohort_label in sorted(df_age["cohort"].unique()):
-                        ages = df_age[df_age["cohort"] == cohort_label][
-                            "age_at_entry"
-                        ].dropna()
+                        ages = df_age[df_age["cohort"] == cohort_label]["age_at_entry"].dropna()
                         fig.add_trace(
                             go.Box(
                                 y=ages,
@@ -252,5 +234,3 @@ def render(
                         xaxis_title="Cohort",
                     )
                     st.plotly_chart(fig, width="stretch")
-                except Exception as exc:
-                    st.error(f"Age distribution failed: {exc}")

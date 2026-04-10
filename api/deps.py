@@ -46,9 +46,7 @@ def get_config() -> dict:
         "data_dir": str(cfg.data_dir) if cfg.data_dir else None,
         "n_max": cfg.n_max,
         "infrastructure": cfg.infrastructure,
-        "external_data_dir": str(cfg.external_data_dir)
-        if cfg.external_data_dir
-        else None,
+        "external_data_dir": str(cfg.external_data_dir) if cfg.external_data_dir else None,
     }
 
 
@@ -84,9 +82,7 @@ def get_app_configs(
 
 
 def get_data_dir(
-    data_dir: Annotated[
-        Optional[str], Query(description="Override data directory")
-    ] = None,
+    data_dir: Annotated[Optional[str], Query(description="Override data directory")] = None,
     platform: PlatformConfig = Depends(get_platform_config),
 ) -> Path:
     """Resolve the data directory from query param or platform config."""

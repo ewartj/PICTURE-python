@@ -14,18 +14,8 @@ from typing import Any, Optional
 import pandas as pd
 import plotly.graph_objects as go
 
+from core.analytics._colours import cohort_colour
 from core.analytics.base import AnalysisBase
-
-_COLOURS = [
-    "#1f77b4",
-    "#ff7f0e",
-    "#2ca02c",
-    "#d62728",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#7f7f7f",
-]
 
 
 class EventCount(AnalysisBase):
@@ -87,30 +77,24 @@ class EventCount(AnalysisBase):
         )
 
         n_nonzero = (
-            nonzero.groupby(self.cohort_col)["patient_count"]
-            .sum()
-            .reset_index(name="n_nonzero")
+            nonzero.groupby(self.cohort_col)["patient_count"].sum().reset_index(name="n_nonzero")
         )
         zero = n_patients.merge(n_nonzero, on=self.cohort_col, how="left")
         zero["n_nonzero"] = zero["n_nonzero"].fillna(0)
         zero["event_count"] = 0
-        zero["patient_count"] = (
-            (zero["n_proj_ids"] - zero["n_nonzero"]).clip(lower=0).astype(int)
-        )
+        zero["patient_count"] = (zero["n_proj_ids"] - zero["n_nonzero"]).clip(lower=0).astype(int)
         zero = zero[[self.cohort_col, "event_count", "patient_count"]]
 
         counts = pd.concat([nonzero, zero], ignore_index=True).sort_values(
             [self.cohort_col, "event_count"]
         )
-        counts["patient_pct"] = counts.groupby(self.cohort_col)[
-            "patient_count"
-        ].transform(lambda x: x / x.sum() if x.sum() > 0 else x)
+        counts["patient_pct"] = counts.groupby(self.cohort_col)["patient_count"].transform(
+            lambda x: x / x.sum() if x.sum() > 0 else x
+        )
 
         self._counts = counts
         # Wide summary: event_count, {cohort}.count, {cohort}.frequency
-        wide = counts.rename(
-            columns={"patient_count": "count", "patient_pct": "frequency"}
-        )
+        wide = counts.rename(columns={"patient_count": "count", "patient_pct": "frequency"})
         wide = wide.pivot_table(
             index="event_count",
             columns=self.cohort_col,
@@ -118,9 +102,7 @@ class EventCount(AnalysisBase):
             fill_value=0,
         )
         wide.columns = [f"{cohort}.{metric}" for metric, cohort in wide.columns]
-        self._result = wide.reset_index().rename(
-            columns={"event_count": "Number of events"}
-        )
+        self._result = wide.reset_index().rename(columns={"event_count": "Number of events"})
         return self
 
     def plot(self) -> go.Figure:
@@ -129,7 +111,7 @@ class EventCount(AnalysisBase):
         fig = go.Figure()
         for i, cohort in enumerate(self.cohorts):
             grp = self._counts[self._counts[self.cohort_col] == cohort]
-            hex_c = _COLOURS[i % len(_COLOURS)]
+            hex_c = cohort_colour(i)
             r, g, b = int(hex_c[1:3], 16), int(hex_c[3:5], 16), int(hex_c[5:7], 16)
             fig.add_trace(
                 go.Bar(
@@ -153,7 +135,6 @@ class EventCount(AnalysisBase):
 
     def to_dict(self) -> dict[str, Any]:
         self._require_computed()
-        assert self._result is not None
         return {
             "table": self._result.to_dict(orient="records"),
             "plot": self.plot().to_json(),

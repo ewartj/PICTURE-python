@@ -35,7 +35,6 @@ import plotly.graph_objects as go
 
 from core.analytics.base import AnalysisBase
 
-
 # ---------------------------------------------------------------------------
 # NHS ethnicity code → grouped category (mirrors R utils_add_rdv_hierarchies.R)
 # ---------------------------------------------------------------------------
@@ -156,10 +155,7 @@ class CohortCharacteristics(AnalysisBase):
                 cells=dict(
                     values=cell_vals,
                     fill_color=[
-                        [
-                            "#ecf0f1" if i % 2 == 0 else "white"
-                            for i in range(len(display))
-                        ]
+                        ["#ecf0f1" if i % 2 == 0 else "white" for i in range(len(display))]
                         for _ in display.columns
                     ],
                     align="left",

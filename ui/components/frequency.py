@@ -13,14 +13,12 @@ POST /analytics/frequency instead of importing FrequencyAnalysis directly.
 
 from __future__ import annotations
 
-import re
-
 import streamlit as st
 
 from core.analytics.frequency import FrequencyAnalysis
 from core.cohort.models import ResolvedCohort
 from core.config.app_config import AnalysisMethod
-from ui.components import evict_stale_cache, get_cohorted_rdv
+from ui.components import evict_stale_cache, get_cohorted_rdv, handle_analysis_errors
 
 
 def render(
@@ -28,27 +26,8 @@ def render(
     resolved_cohorts: list[ResolvedCohort],
     rdvs: dict,
 ) -> None:
-    """Render the frequency analysis for one YAML method entry.
-
-    Args:
-        method:            The ``gen_frequency_analysis`` method entry from the
-                           app YAML, carrying ``df_rdv`` and ``event_col``
-                           params.
-        resolved_cohorts:  Cohorts already resolved against the loaded data.
-                           Each cohort becomes a separate series in the chart.
-        rdvs:              All loaded RDV DataFrames, keyed by RDV code.
-    """
-    # ------------------------------------------------------------------
-    # Resolve which RDV and column to use from the YAML params.
-    # The YAML carries e.g. { df_rdv: "df_dia", event_col: "diag_name" }.
-    # ------------------------------------------------------------------
-    rdv_param = method.rdv_params.get("df_rdv")
-    if not rdv_param:
-        st.error("This method's YAML params do not include a `df_rdv` key.")
-        return
-
-    # Strip the leading "df_" to get the RDV code used as a dict key
-    rdv_name = re.sub(r"^df_", "", rdv_param)
+    rdv_name = method.rdv_name
+    event_col = method.event_col
 
     if rdv_name not in rdvs:
         st.error(
@@ -56,9 +35,6 @@ def render(
             f"found in the data directory. Available: {list(rdvs.keys())}"
         )
         return
-
-    # event_col comes from static params; fall back to a selectbox if absent
-    event_col: str | None = method.static_params.get("event_col")
 
     df_rdv = rdvs[rdv_name]
 
@@ -78,7 +54,7 @@ def render(
         )
 
     # ------------------------------------------------------------------
-    # Info row — show what this analysis is running
+    # Info row
     # ------------------------------------------------------------------
     col_info, col_type = st.columns([4, 1])
     with col_info:
@@ -89,15 +65,11 @@ def render(
         )
     with col_type:
         value_type = st.radio(
-            "Show as",
-            ["frequency", "count"],
-            horizontal=True,
-            key=f"vtype_{method.fn}_{rdv_name}",
+            "Show as", ["frequency", "count"], horizontal=True, key=f"vtype_{method.fn}_{rdv_name}"
         )
 
     # ------------------------------------------------------------------
     # Cache compute() — re-runs only when data or cohorts change.
-    # The value_type widget only affects plot(), so it must not bust the cache.
     # ------------------------------------------------------------------
     cohort_key = ":".join(f"{c.label}={c.n_patients}" for c in resolved_cohorts)
     cache_key = f"_freq:{rdv_name}:{event_col}:{cohort_key}"
@@ -105,24 +77,22 @@ def render(
 
     if cache_key not in st.session_state:
         if "pde" not in rdvs:
-            st.warning(
-                "Demographics RDV (`pde`) not found — patient counts may be inaccurate."
-            )
+            st.warning("Demographics RDV (`pde`) not found — patient counts may be inaccurate.")
 
         df_analysis = get_cohorted_rdv(rdv_name, df_rdv, resolved_cohorts, cohort_key)
 
-        with st.spinner("Computing..."):
-            try:
-                analysis = FrequencyAnalysis(
-                    df_rdv=df_analysis,
-                    df_pde=rdvs.get("pde", df_analysis),
-                    event_col=event_col,
+        with handle_analysis_errors("Frequency analysis"):
+            with st.spinner("Computing..."):
+                analysis = (
+                    FrequencyAnalysis(
+                        df_rdv=df_analysis,
+                        df_pde=rdvs.get("pde", df_analysis),
+                        event_col=event_col,
+                    )
+                    .compute()
+                    .free_input_data()
                 )
-                analysis.compute().free_input_data()
-            except Exception as exc:
-                st.error(f"Analysis failed: {exc}")
-                return
-        st.session_state[cache_key] = analysis
+            st.session_state[cache_key] = analysis
 
     analysis: FrequencyAnalysis = st.session_state[cache_key]
 

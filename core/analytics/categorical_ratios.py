@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 from scipy.stats import chi2_contingency
 
 from core.analytics.base import AnalysisBase
+from core.constants import UNKNOWN_CATEGORY
 
 
 class CategoricalRatios(AnalysisBase):
@@ -43,7 +44,11 @@ class CategoricalRatios(AnalysisBase):
 
     def compute(self) -> "CategoricalRatios":
         df = self.df_rdv[[self.cohort_col, self.col]].copy()
-        df[self.col] = df[self.col].fillna("Unknown")
+        # Cast to str first so Categorical columns accept the "Unknown" fill value.
+        # astype(str) turns NaN → "nan" and None → "None"; normalise both to "Unknown".
+        df[self.col] = (
+            df[self.col].astype(str).replace({"nan": UNKNOWN_CATEGORY, "None": UNKNOWN_CATEGORY})
+        )
 
         # Counts: rows = category values, columns = cohort labels
         counts = df.groupby([self.cohort_col, self.col]).size().unstack(fill_value=0)
@@ -115,7 +120,6 @@ class CategoricalRatios(AnalysisBase):
 
     def to_dict(self) -> dict[str, Any]:
         self._require_computed()
-        assert self._result is not None
         table = self._result.copy()
         # Round percentages for the API response
         for col in table.columns:

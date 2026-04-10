@@ -30,7 +30,6 @@ import pandas as pd
 from core.cohort.formatting import describe_cohort_short
 from core.cohort.models import CohortDefinition
 
-
 # ── Patient info ────────────────────────────────────────────────────────────────
 
 

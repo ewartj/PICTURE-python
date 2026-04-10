@@ -84,9 +84,7 @@ def resolve_cohort(
             for fn in filter_fns:
                 working = fn(working, step)
 
-            new_list = working[
-                ["project_id", "entry_date", "exit_date"]
-            ].drop_duplicates()
+            new_list = working[["project_id", "entry_date", "exit_date"]].drop_duplicates()
 
             if step.inclusion == "never":
                 excluded = new_list["project_id"].unique()
@@ -126,8 +124,6 @@ def apply_cohorts_to_rdv(
             filtered = _ff_crop_start_end(filtered)
 
         filtered = filtered.assign(cohort=cohort.label)
-        # Drop patient-list columns — they were only needed for temporal filtering.
-        filtered = filtered.drop(columns=["entry_date", "exit_date"], errors="ignore")
         frames.append(filtered)
 
     if not frames:
@@ -146,33 +142,42 @@ def _build_filter_fn(step: CohortFilterStep) -> Callable:
     vals = step.val or []
     qt = step.query_type
 
-    if qt == "str_matches":
-        pattern = "^(" + "|".join(re.escape(v) for v in vals) + ")$"
-        return lambda df, _s: df[df[col].astype(str).str.match(pattern, na=False)]
+    def _str_matches(df, _s, _col=col, _vals=vals):
+        pattern = "^(" + "|".join(re.escape(v) for v in _vals) + ")$"
+        return df[df[_col].astype(str).str.match(pattern, na=False)]
 
-    if qt == "str_contains":
-        pattern = "(?i)(" + "|".join(re.escape(v) for v in vals) + ")"
-        return lambda df, _s: df[df[col].astype(str).str.contains(pattern, na=False)]
+    def _str_contains(df, _s, _col=col, _vals=vals):
+        pattern = "(?i)(" + "|".join(re.escape(v) for v in _vals) + ")"
+        return df[df[_col].astype(str).str.contains(pattern, na=False)]
 
-    if qt == "str_starts":
-        pattern = "^(" + "|".join(re.escape(v) for v in vals) + ")"
-        return lambda df, _s: df[df[col].astype(str).str.match(pattern, na=False)]
+    def _str_starts(df, _s, _col=col, _vals=vals):
+        pattern = "^(" + "|".join(re.escape(v) for v in _vals) + ")"
+        return df[df[_col].astype(str).str.match(pattern, na=False)]
 
-    if qt in ("date_between", "numeric_between"):
-        lo, hi = vals[0], vals[1]
-        return lambda df, _s: df[(df[col] >= lo) & (df[col] <= hi)]
+    def _range_between(df, _s, _col=col, _vals=vals):
+        lo, hi = _vals[0], _vals[1]
+        return df[(df[_col] >= lo) & (df[_col] <= hi)]
 
-    if qt == "age_between":
-        start_age, end_age = int(vals[0]), int(vals[1])
-        assert col is not None, "age_between filter requires a column name"
-        return lambda df, _s: _filter_age_between(df, col, start_age, end_age)
+    def _age_between(df, _s, _col=col, _vals=vals):
+        assert _col is not None, "age_between filter requires a column name"
+        return _filter_age_between(df, _col, int(_vals[0]), int(_vals[1]))
 
-    raise ValueError(f"Unknown query_type: {qt}")
+    _DISPATCH: dict[str, Callable] = {
+        "str_matches": _str_matches,
+        "str_contains": _str_contains,
+        "str_starts": _str_starts,
+        "date_between": _range_between,
+        "numeric_between": _range_between,
+        "age_between": _age_between,
+    }
+
+    fn = _DISPATCH.get(qt)
+    if fn is None:
+        raise ValueError(f"Unknown query_type: {qt!r}. Valid types: {list(_DISPATCH)}")
+    return fn
 
 
-def _filter_age_between(
-    df: pd.DataFrame, col: str, start_age: int, end_age: int
-) -> pd.DataFrame:
+def _filter_age_between(df: pd.DataFrame, col: str, start_age: int, end_age: int) -> pd.DataFrame:
     if "birth_date" not in df.columns:
         return df
     df = df.copy()
@@ -322,10 +327,7 @@ def _ff_crop_first(df: pd.DataFrame, step) -> pd.DataFrame:
     w1, w2 = _window_offsets(step)
     df = df.copy()
     first_start = (
-        df.groupby("project_id")["start_datetime"]
-        .min()
-        .rename("_first_start")
-        .reset_index()
+        df.groupby("project_id")["start_datetime"].min().rename("_first_start").reset_index()
     )
     df = df.merge(first_start, on="project_id", how="left")
     df["entry_date"] = pd.concat(

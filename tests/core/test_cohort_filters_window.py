@@ -18,7 +18,6 @@ import pytest
 from core.cohort.filters import resolve_cohort
 from core.cohort.models import CohortDefinition, CohortFilterStep, ResolvedCohort
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

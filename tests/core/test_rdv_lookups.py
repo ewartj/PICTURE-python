@@ -16,7 +16,6 @@ from core.rdv.lookups import (
     list_rdv_codes,
 )
 
-
 # ---------------------------------------------------------------------------
 # RDV-level
 # ---------------------------------------------------------------------------
@@ -77,9 +76,7 @@ def test_get_variable_filter_type_select_column():
 
 
 def test_get_variable_filter_type_date_column():
-    assert (
-        get_variable_filter_type("dia_conditions", "start_datetime") == "date_between"
-    )
+    assert get_variable_filter_type("dia_conditions", "start_datetime") == "date_between"
 
 
 def test_get_variable_filter_type_unknown_returns_none():
