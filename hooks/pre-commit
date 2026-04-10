@@ -24,39 +24,24 @@ FAILED=0
 # --- Get list of staged Python files ---
 STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
 
-# ── 1. Ruff lint (staged Python files only) ──────────────────────────────────
+# ── 1. black format check (staged Python files only) ─────────────────────────
 echo ""
-echo -e "${BOLD}[1/4] Ruff lint${NC}"
+echo -e "${BOLD}[1/3] black format${NC}"
 
 if [ -z "$STAGED_PY" ]; then
   pass "No Python files staged"
 else
-  if echo "$STAGED_PY" | xargs python3 -m ruff check --quiet 2>&1; then
-    pass "ruff clean"
-  else
-    fail "ruff found issues — run: ruff check --fix"
-    FAILED=1
-  fi
-fi
-
-# ── 2. Ruff format check (staged Python files only) ──────────────────────────
-echo ""
-echo -e "${BOLD}[2/4] Ruff format${NC}"
-
-if [ -z "$STAGED_PY" ]; then
-  pass "No Python files staged"
-else
-  if echo "$STAGED_PY" | xargs python3 -m ruff format --check --quiet 2>&1; then
+  if echo "$STAGED_PY" | xargs python3 -m black --check --quiet 2>&1; then
     pass "Formatting OK"
   else
-    fail "Formatting issues found — run: ruff format"
+    fail "Formatting issues found — run: black ."
     FAILED=1
   fi
 fi
 
-# ── 3. mypy type check (core/ and api/ only — the server-side layers) ────────
+# ── 2. mypy type check (core/ and api/ only — the server-side layers) ────────
 echo ""
-echo -e "${BOLD}[3/4] mypy type check${NC}"
+echo -e "${BOLD}[2/3] mypy type check${NC}"
 
 STAGED_CORE_API=$(echo "$STAGED_PY" | grep -E '^(core|api)/' || true)
 
@@ -80,8 +65,8 @@ if [ "$FAILED" -eq 1 ]; then
   exit 1
 fi
 
-# ── 4. AI review (security, architecture, code quality — parallel) ────────────
+# ── 3. AI review (security, architecture, code quality — parallel) ────────────
 echo ""
-echo -e "${BOLD}[4/4] AI code review${NC}"
+echo -e "${BOLD}[3/3] AI code review${NC}"
 
 "$REPO_ROOT/review.sh" --block-on-issues

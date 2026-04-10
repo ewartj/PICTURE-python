@@ -52,54 +52,6 @@ analysis:
           event_col: diag_name
           plot_type: boxplot
           log_scale: false
-      - fn: gen_recurrence_analysis
-        tab_lbl: Recurrence
-        params:
-          df_rdv: df_dia
-          event_col: diag_name
-      - fn: gen_correlation_analysis
-        tab_lbl: Correlation
-        params:
-          df_rdv: df_dia
-          event_col: diag_name
-      - fn: gen_hierarchical_data_plots
-        tab_lbl: Hierarchy
-        params:
-          df_rdv: df_dia
-          group_cols:
-            - icd10_chapter
-            - icd10_section
-            - diag_name
-          size_col: project_id
-
-  - tab: Timeseries
-    methodList:
-      - fn: gen_timeseries_analysis
-        tab_lbl: Measurement over time
-        params:
-          df_rdv: df_lab
-          grouping_col: component_name
-          value_col: NumericValue
-          datetime_col: start_datetime
-          hor_axis: Years since entering cohort
-      - fn: gen_timeseries_decomposition
-        tab_lbl: Trend decomposition
-        params:
-          df_rdv: df_lab
-          label: Lab results
-
-  - tab: Distribution
-    methodList:
-      - fn: gen_distribution_plots
-        tab_lbl: Length of Stay
-        params:
-          df_rdv: df_wst
-          col: ward_stay_days
-          stratify_by: cohort
-          filter_col: ward_code
-          filter_val: PICU
-          side_by_side: TRUE
-          calc_length: FALSE
 
 outputs:
   interactive: TRUE

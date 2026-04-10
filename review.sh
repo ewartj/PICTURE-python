@@ -100,7 +100,7 @@ run_agent "$TMP_ARCH"     "ARCHITECTURE" "backend architect"         \
 PID2=$!
 
 run_agent "$TMP_QUALITY"  "QUALITY"      "code quality reviewer"     \
-  "bare except clauses, missing None checks on RDV inputs, silent data failures, ruff violations (line-length 100, py311)" &
+  "bare except clauses, missing None checks on RDV inputs, silent data failures, black formatting violations (line-length 100, py311)" &
 PID3=$!
 
 wait $PID1; wait $PID2; wait $PID3
