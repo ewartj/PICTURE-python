@@ -40,6 +40,10 @@ from core.config.platform_config import _resolve_app_yaml, load_platform_config
 from core.cohort.filters import resolve_cohort
 from core.cohort.models import ResolvedCohort
 from core.data.loader import load_all_rdvs
+from ui.components.demographics import render as render_demographics
+from ui.components.event_count import render as render_event_count
+from ui.components.event_time import render as render_event_time
+from ui.components.frequency import render as render_frequency
 
 _platform = load_platform_config()
 
@@ -50,13 +54,14 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Analytics method → page render function registry ──────────────────────────
-# Add entries here as new analytics modules are implemented.
-_FN_REGISTRY: dict[str, str] = {
-    "gen_frequency_analysis": "frequency",
-    "tpl_pde_all": "demographics",
-    "gen_event_count": "event_count",
-    "gen_event_time_analysis": "event_time",
+# ── Analytics method → render function registry ────────────────────────────────
+# To add a new analysis: import its render function above and add one entry here.
+# No other changes needed in this file.
+_FN_REGISTRY = {
+    "gen_frequency_analysis": render_frequency,
+    "tpl_pde_all": render_demographics,
+    "gen_event_count": render_event_count,
+    "gen_event_time_analysis": render_event_time,
 }
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -87,11 +92,7 @@ def _resolve_cohorts(
     rdvs: dict,
     override_cohorts: list | None = None,
 ) -> list[ResolvedCohort]:
-    cohort_defs = (
-        override_cohorts
-        if override_cohorts is not None
-        else (app.initial_cohorts or [])
-    )
+    cohort_defs = override_cohorts if override_cohorts is not None else (app.initial_cohorts or [])
     # Use a cache key that includes whether we have a patient override
     has_override = override_cohorts is not None and override_cohorts is not (
         app.initial_cohorts or []
@@ -152,17 +153,15 @@ with st.sidebar:
                 ),
                 key_prefix="sidebar_patient",
             )
-            st.session_state[
-                f"_patient_cohorts:{st.session_state['selected_app_id']}"
-            ] = _patient_cohorts
+            st.session_state[f"_patient_cohorts:{st.session_state['selected_app_id']}"] = (
+                _patient_cohorts
+            )
 
     st.markdown("---")
     st.caption("UI layer — will be replaced by React frontend.")
 
 if not app_dir or not data_dir:
-    st.info(
-        "Enter an App YAML directory and a data directory in the sidebar to get started."
-    )
+    st.info("Enter an App YAML directory and a data directory in the sidebar to get started.")
     st.stop()
 
 if not Path(app_dir).is_dir():
@@ -268,13 +267,9 @@ st.session_state[f"_app_initial_cohorts:{app.id}"] = app.initial_cohorts or []
 
 # If the patient selector substituted a patient ID, use those definitions
 _patient_cohorts = st.session_state.get(f"_patient_cohorts:{app.id}")
-_effective_initial = (
-    _patient_cohorts if _patient_cohorts else (app.initial_cohorts or [])
-)
+_effective_initial = _patient_cohorts if _patient_cohorts else (app.initial_cohorts or [])
 
-resolved_cohorts = _resolve_cohorts(
-    app, data_dir, rdvs, override_cohorts=_effective_initial
-)
+resolved_cohorts = _resolve_cohorts(app, data_dir, rdvs, override_cohorts=_effective_initial)
 
 # ── App header ─────────────────────────────────────────────────────────────────
 
@@ -312,9 +307,7 @@ with all_st_tabs[0]:
         data_dir=data_dir,
     )
     # Re-read resolved_cohorts in case the editor just re-resolved them
-    resolved_cohorts = st.session_state.get(
-        f"cohorts:{app.id}:{data_dir}", resolved_cohorts
-    )
+    resolved_cohorts = st.session_state.get(f"cohorts:{app.id}:{data_dir}", resolved_cohorts)
 
 # ── Analysis tabs ───────────────────────────────────────────────────────────────
 
@@ -333,36 +326,9 @@ for st_tab, analysis_tab in zip(all_st_tabs[1:], app.analysis or []):
 
         for container, method in zip(containers, analysis_tab.method_list):
             with container:
-                page_key = _FN_REGISTRY.get(method.fn)
-
-                if page_key == "frequency":
-                    from ui.components.frequency import render as render_frequency
-
-                    render_frequency(
-                        method=method,
-                        resolved_cohorts=resolved_cohorts,
-                        rdvs=rdvs,
-                    )
-                elif page_key == "demographics":
-                    from ui.components.demographics import render as render_demographics
-
-                    render_demographics(
-                        method=method,
-                        resolved_cohorts=resolved_cohorts,
-                        rdvs=rdvs,
-                    )
-                elif page_key == "event_count":
-                    from ui.components.event_count import render as render_event_count
-
-                    render_event_count(
-                        method=method, resolved_cohorts=resolved_cohorts, rdvs=rdvs
-                    )
-                elif page_key == "event_time":
-                    from ui.components.event_time import render as render_event_time
-
-                    render_event_time(
-                        method=method, resolved_cohorts=resolved_cohorts, rdvs=rdvs
-                    )
+                render_fn = _FN_REGISTRY.get(method.fn)
+                if render_fn:
+                    render_fn(method=method, resolved_cohorts=resolved_cohorts, rdvs=rdvs)
                 else:
                     st.info(
                         f"`{method.fn}` is not yet implemented in the Python UI.  "

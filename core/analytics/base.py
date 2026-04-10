@@ -23,6 +23,8 @@ from typing import Any, Optional
 import pandas as pd
 import plotly.graph_objects as go
 
+from core.constants import COHORT_COL, DEFAULT_COHORT_LABEL, PROJECT_ID_COL
+
 
 class AnalysisBase(ABC):
     """Abstract base class for PICTURE analytics modules."""
@@ -36,23 +38,26 @@ class AnalysisBase(ABC):
         df_pde: pd.DataFrame,
         cohort_col: Optional[str] = None,
     ) -> None:
-        cohort_col = cohort_col or ("cohort" if "cohort" in df_rdv.columns else None)
+        cohort_col = cohort_col or (COHORT_COL if COHORT_COL in df_rdv.columns else None)
         self._result: Optional[pd.DataFrame] = None
         # Cached after free_input_data() is called.
         self._cohorts_cache: Optional[list[str]] = None
         self._cohort_sizes_cache: Optional[pd.Series] = None
+        # Typed as Optional so free_input_data() can set them to None safely.
+        self.df_rdv: Optional[pd.DataFrame] = None
+        self.df_pde: Optional[pd.DataFrame] = None
 
         # Only copy when we need to add a missing cohort column; otherwise
         # store a reference to avoid doubling memory on every analytics call.
         if cohort_col is None or cohort_col not in df_rdv.columns:
-            self.df_rdv = df_rdv.assign(cohort="All")
-            self.cohort_col: str = "cohort"
+            self.df_rdv = df_rdv.assign(**{COHORT_COL: DEFAULT_COHORT_LABEL})
+            self.cohort_col: str = COHORT_COL
         else:
             self.df_rdv = df_rdv
             self.cohort_col = cohort_col
 
         if self.cohort_col not in df_pde.columns:
-            self.df_pde = df_pde.assign(**{self.cohort_col: "All"})
+            self.df_pde = df_pde.assign(**{self.cohort_col: DEFAULT_COHORT_LABEL})
         else:
             self.df_pde = df_pde
 
@@ -88,17 +93,17 @@ class AnalysisBase(ABC):
         """Sorted list of cohort labels present in the data."""
         if self._cohorts_cache is not None:
             return self._cohorts_cache
+        if self.df_rdv is None:
+            raise RuntimeError("Input data has been freed; cohorts cache was not populated.")
         return sorted(self.df_rdv[self.cohort_col].dropna().unique().tolist())
 
     def cohort_sizes(self) -> pd.Series:
         """Number of unique patients per cohort (from df_rdv)."""
         if self._cohort_sizes_cache is not None:
             return self._cohort_sizes_cache
-        return (
-            self.df_rdv.groupby(self.cohort_col)["project_id"]
-            .nunique()
-            .rename("n_patients")
-        )
+        if self.df_rdv is None:
+            raise RuntimeError("Input data has been freed; cohort_sizes cache was not populated.")
+        return self.df_rdv.groupby(self.cohort_col)[PROJECT_ID_COL].nunique().rename("n_patients")
 
     def free_input_data(self) -> "AnalysisBase":
         """Release input DataFrames after compute() to free memory.
@@ -117,8 +122,8 @@ class AnalysisBase(ABC):
         self._cohorts_cache = self.cohorts
         self._cohort_sizes_cache = self.cohort_sizes()
         # Release the large input DataFrames.
-        self.df_rdv = None  # type: ignore[assignment]
-        self.df_pde = None  # type: ignore[assignment]
+        self.df_rdv = None
+        self.df_pde = None
         return self
 
     def head(self, n: int = 20, by: Optional[str] = None) -> pd.DataFrame:
@@ -131,10 +136,11 @@ class AnalysisBase(ABC):
 
     def _count_col(self, cohort: Optional[str] = None) -> str:
         df = self._require_computed()
-        target = cohort or self.cohorts[0]
-        candidates = [
-            c for c in df.columns if c.startswith(target) and c.endswith(".count")
-        ]
+        cohort_list = self.cohorts
+        if not cohort_list:
+            return df.columns[-1]
+        target = cohort or cohort_list[0]
+        candidates = [c for c in df.columns if c.startswith(target) and c.endswith(".count")]
         if not candidates:
             candidates = [c for c in df.columns if "count" in c]
         return candidates[0] if candidates else df.columns[-1]

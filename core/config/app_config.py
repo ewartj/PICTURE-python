@@ -50,7 +50,6 @@ import yaml
 
 from core.cohort.models import CohortDefinition, cohort_definition_from_yaml
 
-
 # ---------------------------------------------------------------------------
 # Custom YAML tag: !datelist
 # ---------------------------------------------------------------------------
@@ -59,9 +58,7 @@ from core.cohort.models import CohortDefinition, cohort_definition_from_yaml
 # objects so downstream code can use them directly.
 
 
-def _datelist_constructor(
-    loader: yaml.Loader, node: yaml.SequenceNode
-) -> list[datetime]:
+def _datelist_constructor(loader: yaml.Loader, node: yaml.SequenceNode) -> list[datetime]:
     raw = loader.construct_sequence(node)
     result = []
     for item in raw:
@@ -113,20 +110,28 @@ class AnalysisMethod:
     @property
     def rdv_params(self) -> dict[str, str]:
         """Return only the params that reference an RDV (start with ``df_``)."""
-        return {
-            k: v
-            for k, v in self.params.items()
-            if isinstance(v, str) and v.startswith("df_")
-        }
+        return {k: v for k, v in self.params.items() if isinstance(v, str) and v.startswith("df_")}
 
     @property
     def static_params(self) -> dict[str, Any]:
         """Return only the params that are literal values (not RDV references)."""
         return {
-            k: v
-            for k, v in self.params.items()
-            if not (isinstance(v, str) and v.startswith("df_"))
+            k: v for k, v in self.params.items() if not (isinstance(v, str) and v.startswith("df_"))
         }
+
+    @property
+    def rdv_name(self) -> str:
+        """RDV code derived from the ``df_rdv`` param (e.g. ``df_dia`` → ``dia``).
+
+        Falls back to ``"pde"`` if no ``df_rdv`` param is present.
+        """
+        raw = self.rdv_params.get("df_rdv", "df_pde")
+        return re.sub(r"^df_", "", raw)
+
+    @property
+    def event_col(self) -> Optional[str]:
+        """The ``event_col`` static param, or ``None`` if not specified."""
+        return self.static_params.get("event_col")
 
 
 @dataclass
@@ -271,18 +276,14 @@ def load_app_config(path: Path, *, app_id: int = 1) -> AppConfig:
         raw = yaml.safe_load(f)
 
     if not isinstance(raw, dict):
-        raise ValueError(
-            f"Expected a YAML mapping at the top level, got {type(raw)}: {path}"
-        )
+        raise ValueError(f"Expected a YAML mapping at the top level, got {type(raw)}: {path}")
 
     # Required field
     if "title" not in raw:
         raise ValueError(f"App YAML missing required field 'title': {path}")
 
     # initialCohorts
-    initial_cohorts = [
-        cohort_definition_from_yaml(c) for c in (raw.get("initialCohorts") or [])
-    ]
+    initial_cohorts = [cohort_definition_from_yaml(c) for c in (raw.get("initialCohorts") or [])]
 
     # analysis tabs
     analysis = [_parse_tab(t) for t in (raw.get("analysis") or [])]

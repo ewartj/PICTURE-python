@@ -41,7 +41,6 @@ from typing import Optional
 
 import yaml
 
-
 # Default config file shipped with the package
 _DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "config.yaml"
 

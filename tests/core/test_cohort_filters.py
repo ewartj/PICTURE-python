@@ -12,7 +12,6 @@ import pytest
 from core.cohort.filters import apply_cohorts_to_rdv, resolve_cohort
 from core.cohort.models import CohortDefinition, CohortFilterStep, ResolvedCohort
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -23,9 +22,7 @@ def df_pde():
     return pd.DataFrame(
         {
             "project_id": ["P001", "P002", "P003", "P004"],
-            "birth_date": pd.to_datetime(
-                ["1980-01-01", "1990-06-15", "1975-03-20", "2000-11-05"]
-            ),
+            "birth_date": pd.to_datetime(["1980-01-01", "1990-06-15", "1975-03-20", "2000-11-05"]),
             "sex_name": ["Female", "Male", "Female", "Male"],
             "death_date": [None, None, None, None],
         }
@@ -145,3 +142,30 @@ def test_apply_multiple_cohorts(rdvs):
     df_out = apply_cohorts_to_rdv(rdvs["dia"], cohorts)
     assert set(df_out["cohort"].unique()) == {"Female", "Male"}
     assert len(df_out) == 4  # all 4 patients covered
+
+
+def test_apply_cohorts_preserves_entry_date(rdvs):
+    """entry_date must be present in the output of apply_cohorts_to_rdv.
+
+    Regression test: a previous memory-saving change dropped entry_date/exit_date
+    from the output, which broke the Demographics age-at-entry calculation that
+    relies on entry_date being available after the patient_list merge.
+    """
+    definition = CohortDefinition(
+        label="Female",
+        config=[
+            CohortFilterStep(
+                type="filter",
+                rdv="pde",
+                column="sex_name",
+                val=["Female"],
+                inclusion="ever",
+                query_type="str_matches",
+            )
+        ],
+    )
+    resolved = resolve_cohort(definition, rdvs)
+    df_out = apply_cohorts_to_rdv(rdvs["dia"], [resolved])
+    assert (
+        "entry_date" in df_out.columns
+    ), "entry_date must be preserved for age-at-cohort-entry calculation"

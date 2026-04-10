@@ -7,7 +7,6 @@ import pytest
 
 from core.analytics.categorical_ratios import CategoricalRatios
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -99,6 +98,28 @@ def test_compute_fills_na_with_unknown(df_pde):
     obj = CategoricalRatios(df, df_pde, col="ward_code").compute()
     categories = obj._result["ward_code"].tolist()
     assert "Unknown" in categories
+
+
+def test_compute_categorical_dtype_fills_unknown(df_pde):
+    """Categorical dtype columns must not raise when filling missing values.
+
+    Regression test: sex_name is loaded as pd.Categorical from parquet.
+    The old fillna("Unknown") raised:
+        ValueError: Cannot setitem on a Categorical with a new category (Unknown)
+    The fix casts to str first then replaces "nan"/"None" strings.
+    """
+    df = pd.DataFrame(
+        {
+            "project_id": ["P001", "P002", "P003"],
+            "cohort": ["A", "A", "B"],
+            "sex_name": pd.Categorical([None, "Female", "Male"], categories=["Female", "Male"]),
+        }
+    )
+    # Must not raise
+    obj = CategoricalRatios(df, df_pde, col="sex_name").compute()
+    categories = obj._result["sex_name"].tolist()
+    assert "Unknown" in categories
+    assert "Female" in categories
 
 
 # ---------------------------------------------------------------------------

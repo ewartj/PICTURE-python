@@ -8,25 +8,33 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# ---------------------------------------------------------------------------
+# Error response
+# ---------------------------------------------------------------------------
+
+
+class ErrorResponse(BaseModel):
+    """Standard error envelope returned by all endpoints on 4xx/5xx."""
+
+    detail: str
 
 
 # ---------------------------------------------------------------------------
-# Shared
+# Shared response base
 # ---------------------------------------------------------------------------
-
-
-class AnalysisMetaSchema(BaseModel):
-    cohorts: list[str]
-    cohort_sizes: dict[str, int]
-    n_events: int
 
 
 class AnalysisResponseBase(BaseModel):
-    """Every analytics response includes a table, a plotly figure JSON, and meta."""
+    """Every analytics response includes a table, a Plotly figure JSON, and meta.
+
+    ``meta`` is typed as ``dict[str, Any]`` because each analysis adds its own
+    fields (event_col, cohorts, etc.) on top of the common ones.
+    """
 
     table: list[dict[str, Any]]
-    plot: str  # plotly figure serialised with fig.to_json()
+    plot: str  # Plotly figure serialised with fig.to_json()
     meta: dict[str, Any]
 
 
@@ -36,12 +44,19 @@ class AnalysisResponseBase(BaseModel):
 
 
 class FrequencyRequest(BaseModel):
-    data_dir: str
-    rdv: str = "dia"
-    event_col: str
+    data_dir: str = Field(..., min_length=1)
+    rdv: str = Field("dia", min_length=1)
+    event_col: str = Field(..., min_length=1)
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
-    n_max: Optional[int] = None
+    n_max: Optional[int] = Field(None, gt=0)
     value: Literal["frequency", "count"] = "frequency"
+
+    @field_validator("data_dir", "rdv", "event_col")
+    @classmethod
+    def no_whitespace_only(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
 
 class FrequencyResponse(AnalysisResponseBase):
@@ -54,11 +69,18 @@ class FrequencyResponse(AnalysisResponseBase):
 
 
 class EventCountRequest(BaseModel):
-    data_dir: str
-    rdv: str
-    event_col: str
+    data_dir: str = Field(..., min_length=1)
+    rdv: str = Field(..., min_length=1)
+    event_col: str = Field(..., min_length=1)
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
     count_unique: bool = True
+
+    @field_validator("data_dir", "rdv", "event_col")
+    @classmethod
+    def no_whitespace_only(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
 
 class EventCountResponse(AnalysisResponseBase):
@@ -71,15 +93,24 @@ class EventCountResponse(AnalysisResponseBase):
 
 
 class EventTimeRequest(BaseModel):
-    data_dir: str
-    rdv: str
-    event_col: str
+    data_dir: str = Field(..., min_length=1)
+    rdv: str = Field(..., min_length=1)
+    event_col: str = Field(..., min_length=1)
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
     plot_type: Literal["boxplot", "histogram"] = "boxplot"
     log_scale: bool = False
 
+    @field_validator("data_dir", "rdv", "event_col")
+    @classmethod
+    def no_whitespace_only(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
 
 class EventTimeResponse(BaseModel):
+    """EventTime returns ``summary`` (not ``table``) to match to_dict()."""
+
     summary: list[dict[str, Any]]
     plot: str
     meta: dict[str, Any]

@@ -211,9 +211,7 @@ def _render_step_editor(
         # (val is empty), but never override once the user has entered values.
         current_qt = step.get("query_type", "str_matches")
         if not step.get("val"):
-            suggested_qt = get_variable_filter_type(
-                step.get("rdv", ""), step.get("column", "")
-            )
+            suggested_qt = get_variable_filter_type(step.get("rdv", ""), step.get("column", ""))
             if suggested_qt and suggested_qt in _QUERY_TYPES:
                 current_qt = suggested_qt
                 step["query_type"] = current_qt
@@ -222,9 +220,7 @@ def _render_step_editor(
             step["query_type"] = st.selectbox(
                 "Query type",
                 options=_QUERY_TYPES,
-                index=_QUERY_TYPES.index(current_qt)
-                if current_qt in _QUERY_TYPES
-                else 0,
+                index=_QUERY_TYPES.index(current_qt) if current_qt in _QUERY_TYPES else 0,
                 format_func=lambda q: f"{q}  —  {_QUERY_HELP[q]}",
                 key=f"qt_{key}",
             )
@@ -246,9 +242,7 @@ def _render_step_editor(
             step["inclusion"] = st.selectbox(
                 "Inclusion",
                 options=_INCLUSIONS,
-                index=_INCLUSIONS.index(current_inc)
-                if current_inc in _INCLUSIONS
-                else 0,
+                index=_INCLUSIONS.index(current_inc) if current_inc in _INCLUSIONS else 0,
                 format_func=lambda i: f"{i}  —  {_INCLUSION_HELP[i]}",
                 key=f"inc_{key}",
             )
@@ -347,13 +341,9 @@ def _render_val_input(step: dict, rdv_df: pd.DataFrame, key: str) -> list:
         label_lo = "Min age (years)" if qt == "age_between" else "Min"
         label_hi = "Max age (years)" if qt == "age_between" else "Max"
         with n_cols[0]:
-            lo_val = st.number_input(
-                label_lo, value=lo_val, step=1.0, key=f"val_lo_{key}"
-            )
+            lo_val = st.number_input(label_lo, value=lo_val, step=1.0, key=f"val_lo_{key}")
         with n_cols[1]:
-            hi_val = st.number_input(
-                label_hi, value=hi_val, step=1.0, key=f"val_hi_{key}"
-            )
+            hi_val = st.number_input(label_hi, value=hi_val, step=1.0, key=f"val_hi_{key}")
         return [lo_val, hi_val]
 
 
@@ -373,9 +363,7 @@ def _apply_cohorts(
 
     progress = st.progress(0, text="Resolving cohorts…")
     for i, defn in enumerate(definitions):
-        progress.progress(
-            (i + 1) / max(len(definitions), 1), text=f"Resolving '{defn.label}'…"
-        )
+        progress.progress((i + 1) / max(len(definitions), 1), text=f"Resolving '{defn.label}'…")
         try:
             resolved.append(resolve_cohort(defn, rdvs))
         except Exception as exc:

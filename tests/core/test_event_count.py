@@ -44,9 +44,7 @@ def test_compute_returns_self(df_rdv, df_pde):
 def test_compute_includes_zero_count_patients(df_rdv, df_pde):
     obj = EventCount(df_rdv, df_pde, event_col="diag_name").compute()
     # P006 in cohort B has no events → should appear with event_count=0
-    zero_rows = obj._counts[
-        (obj._counts["cohort"] == "B") & (obj._counts["event_count"] == 0)
-    ]
+    zero_rows = obj._counts[(obj._counts["cohort"] == "B") & (obj._counts["event_count"] == 0)]
     assert len(zero_rows) == 1
     assert zero_rows["patient_count"].iloc[0] == 1  # P006
 
@@ -58,12 +56,8 @@ def test_compute_result_has_cohort_columns(df_rdv, df_pde):
 
 
 def test_count_unique_deduplicates(df_rdv, df_pde):
-    obj_unique = EventCount(
-        df_rdv, df_pde, event_col="diag_name", count_unique=True
-    ).compute()
-    obj_all = EventCount(
-        df_rdv, df_pde, event_col="diag_name", count_unique=False
-    ).compute()
+    obj_unique = EventCount(df_rdv, df_pde, event_col="diag_name", count_unique=True).compute()
+    obj_all = EventCount(df_rdv, df_pde, event_col="diag_name", count_unique=False).compute()
     # P001 has 2 rows in df_rdv but same cohort_id → unique=True collapses them
     a_counts_unique = obj_unique._counts[obj_unique._counts["cohort"] == "A"]
     a_counts_all = obj_all._counts[obj_all._counts["cohort"] == "A"]

@@ -17,7 +17,6 @@ from typing import Literal, Optional
 
 import pandas as pd
 
-
 QueryType = Literal[
     "str_matches",
     "str_contains",
@@ -101,9 +100,7 @@ def cohort_definition_from_yaml(raw: dict) -> CohortDefinition:
             type=step.get("type", "filter"),
             rdv=step.get("rdv"),
             column=step.get("column"),
-            val=step.get("val")
-            if isinstance(step.get("val"), list)
-            else [step.get("val")],
+            val=step.get("val") if isinstance(step.get("val"), list) else [step.get("val")],
             inclusion=step.get("inclusion", "ever"),
             query_type=step.get("query_type", "str_matches"),
             window=step.get("window"),

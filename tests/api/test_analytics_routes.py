@@ -14,7 +14,6 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.deps import get_rdvs
 
-
 # ---------------------------------------------------------------------------
 # Test data
 # ---------------------------------------------------------------------------
