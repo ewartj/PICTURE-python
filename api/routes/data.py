@@ -18,7 +18,9 @@ def list_rdvs(data_dir: Path = Depends(get_data_dir)):
     """Return RDV names that have a data file in data_dir."""
     available = []
     for rdv, stem in RDV_FILE_MAP.items():
-        if (data_dir / f"{stem}.parquet").exists() or (data_dir / f"{stem}.csv").exists():
+        if (data_dir / f"{stem}.parquet").exists() or (
+            data_dir / f"{stem}.csv"
+        ).exists():
             available.append(rdv)
     return RdvListResponse(available=available)
 
@@ -31,6 +33,7 @@ def describe_rdv(
     """Return row count and column names for a specific RDV."""
     if rdv not in rdvs:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail=f"RDV '{rdv}' not available.")
 
     df = rdvs[rdv]

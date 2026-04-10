@@ -58,7 +58,10 @@ from core.cohort.models import CohortDefinition, cohort_definition_from_yaml
 # dates used in ``date_between`` filter values.  We parse them to datetime
 # objects so downstream code can use them directly.
 
-def _datelist_constructor(loader: yaml.Loader, node: yaml.SequenceNode) -> list[datetime]:
+
+def _datelist_constructor(
+    loader: yaml.Loader, node: yaml.SequenceNode
+) -> list[datetime]:
     raw = loader.construct_sequence(node)
     result = []
     for item in raw:
@@ -73,12 +76,13 @@ def _datelist_constructor(loader: yaml.Loader, node: yaml.SequenceNode) -> list[
 
 
 # Register on SafeLoader so yaml.safe_load works with these tags.
-yaml.add_constructor("!datelist", _datelist_constructor, Loader=yaml.SafeLoader)
+yaml.add_constructor("!datelist", _datelist_constructor, Loader=yaml.SafeLoader)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AnalysisMethod:
@@ -99,6 +103,7 @@ class AnalysisMethod:
         rpkg:     Original R package name (informational only; ignored at
                   runtime in Python).
     """
+
     fn: str
     params: dict[str, Any] = field(default_factory=dict)
     tab_lbl: Optional[str] = None
@@ -108,12 +113,20 @@ class AnalysisMethod:
     @property
     def rdv_params(self) -> dict[str, str]:
         """Return only the params that reference an RDV (start with ``df_``)."""
-        return {k: v for k, v in self.params.items() if isinstance(v, str) and v.startswith("df_")}
+        return {
+            k: v
+            for k, v in self.params.items()
+            if isinstance(v, str) and v.startswith("df_")
+        }
 
     @property
     def static_params(self) -> dict[str, Any]:
         """Return only the params that are literal values (not RDV references)."""
-        return {k: v for k, v in self.params.items() if not (isinstance(v, str) and v.startswith("df_"))}
+        return {
+            k: v
+            for k, v in self.params.items()
+            if not (isinstance(v, str) and v.startswith("df_"))
+        }
 
 
 @dataclass
@@ -122,6 +135,7 @@ class AnalysisTab:
 
     Each tab groups one or more analytics methods shown as sub-tabs.
     """
+
     tab: str
     method_list: list[AnalysisMethod] = field(default_factory=list)
 
@@ -129,6 +143,7 @@ class AnalysisTab:
 @dataclass
 class OutputConfig:
     """Controls which output formats are enabled."""
+
     interactive: bool = True
     pdf: bool = False
 
@@ -151,6 +166,7 @@ class AppConfig:
         outputs:              :class:`OutputConfig`.
         source_path:          Path to the YAML file this was loaded from.
     """
+
     id: int
     title: str
     description: str = ""
@@ -184,9 +200,11 @@ class AppConfig:
 # Parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_outputs(raw: Optional[dict]) -> OutputConfig:
     if not raw:
         return OutputConfig()
+
     # YAML may have uppercase TRUE/FALSE (from R); yaml.safe_load handles these
     # as booleans already, but guard against string values just in case.
     def _bool(v: Any) -> bool:
@@ -230,6 +248,7 @@ def _parse_tab(raw: dict) -> AnalysisTab:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def load_app_config(path: Path, *, app_id: int = 1) -> AppConfig:
     """Load and parse a single app YAML file into an :class:`AppConfig`.
 
@@ -252,7 +271,9 @@ def load_app_config(path: Path, *, app_id: int = 1) -> AppConfig:
         raw = yaml.safe_load(f)
 
     if not isinstance(raw, dict):
-        raise ValueError(f"Expected a YAML mapping at the top level, got {type(raw)}: {path}")
+        raise ValueError(
+            f"Expected a YAML mapping at the top level, got {type(raw)}: {path}"
+        )
 
     # Required field
     if "title" not in raw:
@@ -260,8 +281,7 @@ def load_app_config(path: Path, *, app_id: int = 1) -> AppConfig:
 
     # initialCohorts
     initial_cohorts = [
-        cohort_definition_from_yaml(c)
-        for c in (raw.get("initialCohorts") or [])
+        cohort_definition_from_yaml(c) for c in (raw.get("initialCohorts") or [])
     ]
 
     # analysis tabs

@@ -18,9 +18,9 @@ import re
 import streamlit as st
 
 from core.analytics.frequency import FrequencyAnalysis
-from core.cohort.filters import apply_cohorts_to_rdv
 from core.cohort.models import ResolvedCohort
 from core.config.app_config import AnalysisMethod
+from ui.components import evict_stale_cache, get_cohorted_rdv
 
 
 def render(
@@ -64,7 +64,8 @@ def render(
 
     if not event_col:
         categorical_cols = [
-            c for c in df_rdv.columns
+            c
+            for c in df_rdv.columns
             if df_rdv[c].dtype == object or str(df_rdv[c].dtype) == "category"
         ]
         if not categorical_cols:
@@ -84,40 +85,46 @@ def render(
         cohort_labels = [c.label for c in resolved_cohorts] or ["All"]
         st.caption(
             f"RDV: **{rdv_name}** · Column: **{event_col}** · "
-            f"Cohorts: {', '.join(f'**{l}**' for l in cohort_labels)}"
+            f"Cohorts: {', '.join(f'**{lbl}**' for lbl in cohort_labels)}"
         )
     with col_type:
-        value_type = st.radio("Show as", ["frequency", "count"], horizontal=True, key=f"vtype_{method.fn}_{rdv_name}")
+        value_type = st.radio(
+            "Show as",
+            ["frequency", "count"],
+            horizontal=True,
+            key=f"vtype_{method.fn}_{rdv_name}",
+        )
 
     # ------------------------------------------------------------------
-    # Apply cohorts — produces a DataFrame with a `cohort` column
+    # Cache compute() — re-runs only when data or cohorts change.
+    # The value_type widget only affects plot(), so it must not bust the cache.
     # ------------------------------------------------------------------
-    if resolved_cohorts:
-        df_analysis = apply_cohorts_to_rdv(df_rdv, resolved_cohorts)
-    else:
-        # No cohorts defined — treat all patients as a single "All" cohort
-        df_analysis = df_rdv.copy()
-        df_analysis["cohort"] = "All"
-        if "cohort_id" not in df_analysis.columns:
-            df_analysis["cohort_id"] = df_analysis["project_id"].astype(str)
+    cohort_key = ":".join(f"{c.label}={c.n_patients}" for c in resolved_cohorts)
+    cache_key = f"_freq:{rdv_name}:{event_col}:{cohort_key}"
+    evict_stale_cache(f"_freq:{rdv_name}:{event_col}:", cache_key)
 
-    # ------------------------------------------------------------------
-    # Run analysis
-    # ------------------------------------------------------------------
-    if "pde" not in rdvs:
-        st.warning("Demographics RDV (`pde`) not found — patient counts may be inaccurate.")
-
-    with st.spinner("Computing..."):
-        try:
-            analysis = FrequencyAnalysis(
-                df_rdv=df_analysis,
-                df_pde=rdvs.get("pde", df_analysis),
-                event_col=event_col,
+    if cache_key not in st.session_state:
+        if "pde" not in rdvs:
+            st.warning(
+                "Demographics RDV (`pde`) not found — patient counts may be inaccurate."
             )
-            analysis.compute()
-        except Exception as exc:
-            st.error(f"Analysis failed: {exc}")
-            return
+
+        df_analysis = get_cohorted_rdv(rdv_name, df_rdv, resolved_cohorts, cohort_key)
+
+        with st.spinner("Computing..."):
+            try:
+                analysis = FrequencyAnalysis(
+                    df_rdv=df_analysis,
+                    df_pde=rdvs.get("pde", df_analysis),
+                    event_col=event_col,
+                )
+                analysis.compute().free_input_data()
+            except Exception as exc:
+                st.error(f"Analysis failed: {exc}")
+                return
+        st.session_state[cache_key] = analysis
+
+    analysis: FrequencyAnalysis = st.session_state[cache_key]
 
     # ------------------------------------------------------------------
     # Results
@@ -125,12 +132,11 @@ def render(
     tab_chart, tab_table = st.tabs(["Chart", "Table"])
 
     with tab_chart:
-        st.plotly_chart(analysis.plot(value=value_type), width='stretch')
+        st.plotly_chart(analysis.plot(value=value_type), width="stretch")
 
     with tab_table:
-        st.dataframe(analysis.tabulate(), width='stretch')
+        st.dataframe(analysis.tabulate(), width="stretch")
 
     with st.expander("API-equivalent JSON (what React will receive)"):
-        import json
         result = analysis.to_dict()
         st.json({"meta": result["meta"], "table_preview": result["table"][:5]})

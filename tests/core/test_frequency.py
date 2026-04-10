@@ -17,39 +17,72 @@ from core.analytics.frequency import FrequencyAnalysis
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def df_pde():
-    return pd.DataFrame({
-        "project_id": ["P001", "P002", "P003", "P004"],
-        "birth_date": pd.to_datetime(["1980-01-01", "1990-06-15", "1975-03-20", "2000-11-05"]),
-        "sex_name": ["Female", "Male", "Female", "Male"],
-        "death_date": [None, None, None, None],
-        "cohort": ["All", "All", "All", "All"],
-    })
+    return pd.DataFrame(
+        {
+            "project_id": ["P001", "P002", "P003", "P004"],
+            "birth_date": pd.to_datetime(
+                ["1980-01-01", "1990-06-15", "1975-03-20", "2000-11-05"]
+            ),
+            "sex_name": ["Female", "Male", "Female", "Male"],
+            "death_date": [None, None, None, None],
+            "cohort": ["All", "All", "All", "All"],
+        }
+    )
 
 
 @pytest.fixture
 def df_dia(df_pde):
-    return pd.DataFrame({
-        "project_id": ["P001", "P001", "P002", "P003", "P004", "P004"],
-        "diag_name": ["Asthma", "Diabetes", "Asthma", "Hypertension", "Asthma", "Diabetes"],
-        "start_datetime": pd.to_datetime([
-            "2020-01-01", "2020-03-01", "2020-02-01",
-            "2021-01-01", "2021-06-01", "2021-07-01",
-        ]),
-        "end_datetime": pd.to_datetime([
-            "2020-01-02", "2020-03-02", "2020-02-02",
-            "2021-01-02", "2021-06-02", "2021-07-02",
-        ]),
-        "cohort_id": ["P001-000001", "P001-000001", "P002-000001",
-                      "P003-000001", "P004-000001", "P004-000001"],
-        "cohort": ["All", "All", "All", "All", "All", "All"],
-    })
+    return pd.DataFrame(
+        {
+            "project_id": ["P001", "P001", "P002", "P003", "P004", "P004"],
+            "diag_name": [
+                "Asthma",
+                "Diabetes",
+                "Asthma",
+                "Hypertension",
+                "Asthma",
+                "Diabetes",
+            ],
+            "start_datetime": pd.to_datetime(
+                [
+                    "2020-01-01",
+                    "2020-03-01",
+                    "2020-02-01",
+                    "2021-01-01",
+                    "2021-06-01",
+                    "2021-07-01",
+                ]
+            ),
+            "end_datetime": pd.to_datetime(
+                [
+                    "2020-01-02",
+                    "2020-03-02",
+                    "2020-02-02",
+                    "2021-01-02",
+                    "2021-06-02",
+                    "2021-07-02",
+                ]
+            ),
+            "cohort_id": [
+                "P001-000001",
+                "P001-000001",
+                "P002-000001",
+                "P003-000001",
+                "P004-000001",
+                "P004-000001",
+            ],
+            "cohort": ["All", "All", "All", "All", "All", "All"],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_compute_returns_self(df_dia, df_pde):
     analysis = FrequencyAnalysis(df_dia, df_pde, event_col="diag_name")
@@ -92,6 +125,7 @@ def test_frequency_is_proportion_of_cohort(df_dia, df_pde):
 
 def test_plot_returns_figure(df_dia, df_pde):
     import plotly.graph_objects as go
+
     analysis = FrequencyAnalysis(df_dia, df_pde, event_col="diag_name").compute()
     fig = analysis.plot()
     assert isinstance(fig, go.Figure)
@@ -99,6 +133,7 @@ def test_plot_returns_figure(df_dia, df_pde):
 
 def test_to_dict_is_json_serialisable(df_dia, df_pde):
     import json
+
     analysis = FrequencyAnalysis(df_dia, df_pde, event_col="diag_name").compute()
     result = analysis.to_dict()
     # Should not raise

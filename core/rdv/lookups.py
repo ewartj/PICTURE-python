@@ -28,6 +28,7 @@ _DIR = Path(__file__).parent
 
 # ── CSV loaders (cached) ────────────────────────────────────────────────────────
 
+
 @lru_cache(maxsize=1)
 def _rdv_codes() -> pd.DataFrame:
     df = pd.read_csv(_DIR / "rdv_code_lookup.csv")
@@ -49,6 +50,7 @@ def _rdv_variables() -> pd.DataFrame:
 
 
 # ── RDV-level lookups ───────────────────────────────────────────────────────────
+
 
 def get_rdv_label(rdv_code: str) -> str:
     """Return the human-readable label for an RDV code.
@@ -78,6 +80,7 @@ def list_rdv_codes() -> list[str]:
 
 
 # ── Variable-level lookups ──────────────────────────────────────────────────────
+
 
 def get_variable_label(rdv_code: str, variable_code: str) -> str:
     """Return the human-readable label for an RDV variable.
@@ -120,6 +123,7 @@ def get_rdv_variables(rdv_code: str) -> list[dict]:
 
 
 # ── Private ─────────────────────────────────────────────────────────────────────
+
 
 def _var_row(rdv_code: str, variable_code: str) -> pd.DataFrame:
     df = _rdv_variables()

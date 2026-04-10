@@ -39,16 +39,6 @@ analysis:
         params:
           df_rdv: df_dia
           event_col: diag_name
-      - fn: gen_distribution_plots
-        tab_lbl: Length of Stay
-        params:
-          df_rdv: df_wst
-          col: ward_stay_days
-          stratify_by: cohort
-          filter_col: ward_code
-          filter_val: PICU
-          side_by_side: TRUE
-          calc_length: FALSE
 outputs:
   interactive: TRUE
   pdf: false

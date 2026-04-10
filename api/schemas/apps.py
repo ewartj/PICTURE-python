@@ -42,6 +42,7 @@ class CohortSummary(BaseModel):
 
 class AppConfigSummary(BaseModel):
     """Lightweight listing returned by GET /apps."""
+
     id: int
     title: str
     description: str = ""
@@ -52,6 +53,7 @@ class AppConfigSummary(BaseModel):
 
 class AppConfigDetail(AppConfigSummary):
     """Full config returned by GET /apps/{app_id}."""
+
     offer_cohort_builder: bool = True
     initial_cohorts: list[CohortSummary] = []
     analysis: list[AnalysisTabSchema] = []

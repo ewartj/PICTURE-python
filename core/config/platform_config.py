@@ -50,6 +50,7 @@ _DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "config.
 # Dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PlatformConfig:
     """Parsed platform configuration.
@@ -66,6 +67,7 @@ class PlatformConfig:
         ui_host:           Streamlit/React host.
         ui_port:           Streamlit/React port.
     """
+
     data_dir: Optional[Path] = None
     app_dir: Optional[Path] = None
     app_yaml_paths: list[Path] = field(default_factory=list)
@@ -82,6 +84,7 @@ class PlatformConfig:
 # ---------------------------------------------------------------------------
 # Path resolution
 # ---------------------------------------------------------------------------
+
 
 def _resolve_app_yaml(
     raw: Optional[str],
@@ -152,6 +155,7 @@ def _to_int_or_none(value) -> Optional[int]:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def load_platform_config(path: Optional[Path] = None) -> PlatformConfig:
     """Load the platform ``config.yaml`` and return a :class:`PlatformConfig`.
 
@@ -178,7 +182,9 @@ def load_platform_config(path: Optional[Path] = None) -> PlatformConfig:
     data_dir_str = os.environ.get("PICTURE_DATA_DIR") or default.get("data_dir")
     app_dir_str = os.environ.get("PICTURE_APP_DIR") or default.get("app_dir")
     app_yaml_str = os.environ.get("PICTURE_APP_YAML") or default.get("app_yaml") or "*"
-    infrastructure = os.environ.get("PICTURE_INFRASTRUCTURE") or default.get("infrastructure", "local")
+    infrastructure = os.environ.get("PICTURE_INFRASTRUCTURE") or default.get(
+        "infrastructure", "local"
+    )
     n_max_raw = os.environ.get("PICTURE_N_MAX") or default.get("n_max")
 
     data_dir = _to_path_or_none(data_dir_str)

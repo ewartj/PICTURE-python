@@ -1,7 +1,7 @@
 ---
 title: Test App
 description: |
-  A sample app for unit testing.
+  A sample app demonstrating all available analytics methods.
 creator: test@example.com
 img: www/images/test.png
 dataset: study01
@@ -32,6 +32,7 @@ analysis:
         params:
           df_pde: df_pde
           df_loc: df_loc
+
   - tab: Diagnoses
     methodList:
       - fn: gen_frequency_analysis
@@ -39,16 +40,19 @@ analysis:
         params:
           df_rdv: df_dia
           event_col: diag_name
-      - fn: gen_distribution_plots
-        tab_lbl: Length of Stay
+      - fn: gen_event_count
+        tab_lbl: Event count
         params:
-          df_rdv: df_wst
-          col: ward_stay_days
-          stratify_by: cohort
-          filter_col: ward_code
-          filter_val: PICU
-          side_by_side: TRUE
-          calc_length: FALSE
+          df_rdv: df_dia
+          event_col: diag_name
+      - fn: gen_event_time_analysis
+        tab_lbl: Duration
+        params:
+          df_rdv: df_dia
+          event_col: diag_name
+          plot_type: boxplot
+          log_scale: false
+
 outputs:
   interactive: TRUE
   pdf: false

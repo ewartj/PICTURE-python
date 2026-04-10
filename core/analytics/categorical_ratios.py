@@ -46,11 +46,7 @@ class CategoricalRatios(AnalysisBase):
         df[self.col] = df[self.col].fillna("Unknown")
 
         # Counts: rows = category values, columns = cohort labels
-        counts = (
-            df.groupby([self.cohort_col, self.col])
-            .size()
-            .unstack(fill_value=0)
-        )
+        counts = df.groupby([self.cohort_col, self.col]).size().unstack(fill_value=0)
 
         # Percentages (each cohort column sums to 100)
         pcts = counts.div(counts.sum(axis=1), axis=0) * 100
@@ -62,10 +58,16 @@ class CategoricalRatios(AnalysisBase):
         # all cells >= 5 (mirrors the R guard conditions)
         cohort_labels = self.cohorts
         if len(cohort_labels) == 2:
-            grp0 = set(df[df[self.cohort_col] == cohort_labels[0]]["project_id"].unique()) \
-                if "project_id" in df.columns else set()
-            grp1 = set(df[df[self.cohort_col] == cohort_labels[1]]["project_id"].unique()) \
-                if "project_id" in df.columns else set()
+            grp0 = (
+                set(df[df[self.cohort_col] == cohort_labels[0]]["project_id"].unique())
+                if "project_id" in df.columns
+                else set()
+            )
+            grp1 = (
+                set(df[df[self.cohort_col] == cohort_labels[1]]["project_id"].unique())
+                if "project_id" in df.columns
+                else set()
+            )
             no_overlap = len(grp0 & grp1) == 0
             all_cells_ok = (self._counts.values >= 5).all()
 
@@ -80,9 +82,7 @@ class CategoricalRatios(AnalysisBase):
                     p_str = f"={p:.2f}"
                 self._test_result = f"Chi-square test p-value{p_str}"
 
-        self._result = self._pcts.reset_index().rename(
-            columns={"index": self.col}
-        )
+        self._result = self._pcts.reset_index().rename(columns={"index": self.col})
         return self
 
     def plot(self) -> go.Figure:
@@ -91,11 +91,13 @@ class CategoricalRatios(AnalysisBase):
 
         fig = go.Figure()
         for category in self._pcts.index:
-            fig.add_trace(go.Bar(
-                name=str(category),
-                x=self._pcts.columns.tolist(),
-                y=self._pcts.loc[category].tolist(),
-            ))
+            fig.add_trace(
+                go.Bar(
+                    name=str(category),
+                    x=self._pcts.columns.tolist(),
+                    y=self._pcts.loc[category].tolist(),
+                )
+            )
 
         title = self.col.replace("_", " ").title()
         if self._test_result:
@@ -113,6 +115,7 @@ class CategoricalRatios(AnalysisBase):
 
     def to_dict(self) -> dict[str, Any]:
         self._require_computed()
+        assert self._result is not None
         table = self._result.copy()
         # Round percentages for the API response
         for col in table.columns:

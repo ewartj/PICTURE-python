@@ -30,7 +30,7 @@ You are a code reviewer for the PICTURE clinical analytics platform — a Python
 - `apply_cohorts_to_rdv()` called correctly with cohort-labelled data
 
 ### Code quality
-- Python 3.11, line length 100 (ruff), mypy non-strict
+- Python 3.11, line length 100 (black), mypy non-strict
 - No bare `except:` — always catch specific exceptions
 - Missing None/empty checks on RDV inputs
 - Unhandled edge cases in cohort filter resolution

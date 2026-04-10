@@ -54,14 +54,13 @@ st.set_page_config(
 # Add entries here as new analytics modules are implemented.
 _FN_REGISTRY: dict[str, str] = {
     "gen_frequency_analysis": "frequency",
-    "tpl_pde_all":            "demographics",
-    "gen_distribution_plots": "distribution",
-    # "gen_timeseries_analysis": "timeseries",
-    # "gen_event_time_analysis": "event_time",
-    # "gen_event_count":         "event_count",
+    "tpl_pde_all": "demographics",
+    "gen_event_count": "event_count",
+    "gen_event_time_analysis": "event_time",
 }
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _load_apps(app_dir: str) -> list[AppConfig]:
     key = f"apps:{app_dir}"
@@ -71,11 +70,14 @@ def _load_apps(app_dir: str) -> list[AppConfig]:
     return st.session_state[key]
 
 
-def _load_rdvs(data_dir: str) -> dict:
-    key = f"rdvs:{data_dir}"
+def _load_rdvs(app: AppConfig, data_dir: str) -> dict:
+    key = f"rdvs:{app.id}:{data_dir}"
     if key not in st.session_state:
-        with st.spinner("Loading RDVs…"):
-            st.session_state[key] = load_all_rdvs(data_dir)
+        # Load only RDVs referenced in this app's YAML.
+        # pde is always included — analytics modules use it for cohort sizes.
+        needed = sorted(app.all_rdv_names | {"pde"})
+        with st.spinner(f"Loading {len(needed)} data table(s)…"):
+            st.session_state[key] = load_all_rdvs(data_dir, rdvs=needed)
     return st.session_state[key]
 
 
@@ -85,9 +87,15 @@ def _resolve_cohorts(
     rdvs: dict,
     override_cohorts: list | None = None,
 ) -> list[ResolvedCohort]:
-    cohort_defs = override_cohorts if override_cohorts is not None else (app.initial_cohorts or [])
+    cohort_defs = (
+        override_cohorts
+        if override_cohorts is not None
+        else (app.initial_cohorts or [])
+    )
     # Use a cache key that includes whether we have a patient override
-    has_override = override_cohorts is not None and override_cohorts is not (app.initial_cohorts or [])
+    has_override = override_cohorts is not None and override_cohorts is not (
+        app.initial_cohorts or []
+    )
     key = f"cohorts:{app.id}:{data_dir}" + (":patient" if has_override else "")
     if key not in st.session_state:
         resolved: list[ResolvedCohort] = []
@@ -136,6 +144,7 @@ with st.sidebar:
         if _rdvs_key and _rdvs_key in st.session_state:
             st.markdown("---")
             from ui.components.patient_selector import render as _render_patient
+
             _patient_cohorts = _render_patient(
                 rdvs=st.session_state[_rdvs_key],
                 initial_cohorts=st.session_state.get(
@@ -151,7 +160,9 @@ with st.sidebar:
     st.caption("UI layer — will be replaced by React frontend.")
 
 if not app_dir or not data_dir:
-    st.info("Enter an App YAML directory and a data directory in the sidebar to get started.")
+    st.info(
+        "Enter an App YAML directory and a data directory in the sidebar to get started."
+    )
     st.stop()
 
 if not Path(app_dir).is_dir():
@@ -212,11 +223,18 @@ if st.session_state.get("selected_app_id") is None:
                     if app.dataset:
                         meta_parts.append(f"📂 {app.dataset}")
                     if app.initial_cohorts:
-                        meta_parts.append(f"👥 {len(app.initial_cohorts)} cohort{'s' if len(app.initial_cohorts) != 1 else ''}")
+                        meta_parts.append(
+                            f"👥 {len(app.initial_cohorts)} cohort{'s' if len(app.initial_cohorts) != 1 else ''}"
+                        )
                     if meta_parts:
                         st.caption("  ·  ".join(meta_parts))
 
-                    if st.button("Open", key=f"open_{app.id}", type="primary", use_container_width=False):
+                    if st.button(
+                        "Open",
+                        key=f"open_{app.id}",
+                        type="primary",
+                        use_container_width=False,
+                    ):
                         st.session_state["selected_app_id"] = app.id
                         st.rerun()
 
@@ -236,7 +254,7 @@ if app is None:
 
 # Load RDVs and resolve cohorts
 try:
-    rdvs = _load_rdvs(data_dir)
+    rdvs = _load_rdvs(app, data_dir)
 except Exception as exc:
     st.error(f"Failed to load RDVs: {exc}")
     st.stop()
@@ -250,9 +268,13 @@ st.session_state[f"_app_initial_cohorts:{app.id}"] = app.initial_cohorts or []
 
 # If the patient selector substituted a patient ID, use those definitions
 _patient_cohorts = st.session_state.get(f"_patient_cohorts:{app.id}")
-_effective_initial = _patient_cohorts if _patient_cohorts else (app.initial_cohorts or [])
+_effective_initial = (
+    _patient_cohorts if _patient_cohorts else (app.initial_cohorts or [])
+)
 
-resolved_cohorts = _resolve_cohorts(app, data_dir, rdvs, override_cohorts=_effective_initial)
+resolved_cohorts = _resolve_cohorts(
+    app, data_dir, rdvs, override_cohorts=_effective_initial
+)
 
 # ── App header ─────────────────────────────────────────────────────────────────
 
@@ -264,7 +286,11 @@ if app.description:
 if resolved_cohorts:
     cohort_cols = st.columns(len(resolved_cohorts))
     for col, cohort in zip(cohort_cols, resolved_cohorts):
-        col.metric(cohort.label, f"{cohort.n_patients:,} patients", f"{cohort.n_periods:,} periods")
+        col.metric(
+            cohort.label,
+            f"{cohort.n_patients:,} patients",
+            f"{cohort.n_periods:,} periods",
+        )
 
 st.markdown("---")
 
@@ -278,6 +304,7 @@ all_st_tabs = st.tabs(all_tab_labels)
 
 with all_st_tabs[0]:
     from ui.components.cohort_editor import render as render_cohort_editor
+
     render_cohort_editor(
         app_id=app.id,
         initial_cohorts=app.initial_cohorts or [],
@@ -310,6 +337,7 @@ for st_tab, analysis_tab in zip(all_st_tabs[1:], app.analysis or []):
 
                 if page_key == "frequency":
                     from ui.components.frequency import render as render_frequency
+
                     render_frequency(
                         method=method,
                         resolved_cohorts=resolved_cohorts,
@@ -317,17 +345,23 @@ for st_tab, analysis_tab in zip(all_st_tabs[1:], app.analysis or []):
                     )
                 elif page_key == "demographics":
                     from ui.components.demographics import render as render_demographics
+
                     render_demographics(
                         method=method,
                         resolved_cohorts=resolved_cohorts,
                         rdvs=rdvs,
                     )
-                elif page_key == "distribution":
-                    from ui.components.distribution import render as render_distribution
-                    render_distribution(
-                        method=method,
-                        resolved_cohorts=resolved_cohorts,
-                        rdvs=rdvs,
+                elif page_key == "event_count":
+                    from ui.components.event_count import render as render_event_count
+
+                    render_event_count(
+                        method=method, resolved_cohorts=resolved_cohorts, rdvs=rdvs
+                    )
+                elif page_key == "event_time":
+                    from ui.components.event_time import render as render_event_time
+
+                    render_event_time(
+                        method=method, resolved_cohorts=resolved_cohorts, rdvs=rdvs
                     )
                 else:
                     st.info(

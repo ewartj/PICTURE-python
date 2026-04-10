@@ -12,47 +12,57 @@ from core.analytics.categorical_ratios import CategoricalRatios
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def df_pde():
-    return pd.DataFrame({
-        "project_id": ["P001", "P002", "P003", "P004", "P005", "P006"],
-        "birth_date":  pd.to_datetime(["1980-01-01"] * 6),
-        "sex_name":    ["Female", "Male", "Female", "Male", "Female", "Male"],
-    })
+    return pd.DataFrame(
+        {
+            "project_id": ["P001", "P002", "P003", "P004", "P005", "P006"],
+            "birth_date": pd.to_datetime(["1980-01-01"] * 6),
+            "sex_name": ["Female", "Male", "Female", "Male", "Female", "Male"],
+        }
+    )
 
 
 @pytest.fixture
 def df_two_cohorts():
     """RDV already labelled with two non-overlapping cohorts."""
-    return pd.DataFrame({
-        "project_id": ["P001", "P002", "P003", "P004", "P005", "P006"],
-        "cohort":     ["Female", "Male", "Female", "Male", "Female", "Male"],
-        "ward_code":  ["PICU", "NICU", "PICU", "PICU", "NICU", "NICU"],
-    })
+    return pd.DataFrame(
+        {
+            "project_id": ["P001", "P002", "P003", "P004", "P005", "P006"],
+            "cohort": ["Female", "Male", "Female", "Male", "Female", "Male"],
+            "ward_code": ["PICU", "NICU", "PICU", "PICU", "NICU", "NICU"],
+        }
+    )
 
 
 @pytest.fixture
 def df_single_cohort():
-    return pd.DataFrame({
-        "project_id": ["P001", "P002", "P003"],
-        "cohort":     ["All", "All", "All"],
-        "ward_code":  ["PICU", "NICU", "PICU"],
-    })
+    return pd.DataFrame(
+        {
+            "project_id": ["P001", "P002", "P003"],
+            "cohort": ["All", "All", "All"],
+            "ward_code": ["PICU", "NICU", "PICU"],
+        }
+    )
 
 
 @pytest.fixture
 def df_overlapping_cohorts():
     """P001 appears in both cohorts — chi-square should be skipped."""
-    return pd.DataFrame({
-        "project_id": ["P001", "P001", "P002", "P003"],
-        "cohort":     ["Female", "Male", "Male", "Female"],
-        "ward_code":  ["PICU", "PICU", "NICU", "NICU"],
-    })
+    return pd.DataFrame(
+        {
+            "project_id": ["P001", "P001", "P002", "P003"],
+            "cohort": ["Female", "Male", "Male", "Female"],
+            "ward_code": ["PICU", "PICU", "NICU", "NICU"],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # compute()
 # ---------------------------------------------------------------------------
+
 
 def test_compute_returns_self(df_two_cohorts, df_pde):
     obj = CategoricalRatios(df_two_cohorts, df_pde, col="ward_code")
@@ -79,11 +89,13 @@ def test_compute_result_has_cohort_columns(df_two_cohorts, df_pde):
 
 
 def test_compute_fills_na_with_unknown(df_pde):
-    df = pd.DataFrame({
-        "project_id": ["P001", "P002"],
-        "cohort":     ["A", "B"],
-        "ward_code":  [None, "PICU"],
-    })
+    df = pd.DataFrame(
+        {
+            "project_id": ["P001", "P002"],
+            "cohort": ["A", "B"],
+            "ward_code": [None, "PICU"],
+        }
+    )
     obj = CategoricalRatios(df, df_pde, col="ward_code").compute()
     categories = obj._result["ward_code"].tolist()
     assert "Unknown" in categories
@@ -93,14 +105,17 @@ def test_compute_fills_na_with_unknown(df_pde):
 # Chi-square test
 # ---------------------------------------------------------------------------
 
+
 def test_chi_square_run_for_two_independent_cohorts(df_pde):
     # All cells must be >= 5 to trigger the test.
     # 5 per cell × 2 wards × 2 cohorts = 20 patients.
-    df = pd.DataFrame({
-        "project_id": [f"P{i:03d}" for i in range(20)],
-        "cohort":     ["Female"] * 10 + ["Male"] * 10,
-        "ward_code":  (["PICU"] * 5 + ["NICU"] * 5) + (["PICU"] * 5 + ["NICU"] * 5),
-    })
+    df = pd.DataFrame(
+        {
+            "project_id": [f"P{i:03d}" for i in range(20)],
+            "cohort": ["Female"] * 10 + ["Male"] * 10,
+            "ward_code": (["PICU"] * 5 + ["NICU"] * 5) + (["PICU"] * 5 + ["NICU"] * 5),
+        }
+    )
     pde = pd.DataFrame({"project_id": df["project_id"].unique()})
     obj = CategoricalRatios(df, pde, col="ward_code").compute()
     assert obj._test_result is not None
@@ -118,11 +133,13 @@ def test_chi_square_skipped_for_single_cohort(df_single_cohort, df_pde):
 
 
 def test_chi_square_skipped_when_cell_below_5(df_pde):
-    df = pd.DataFrame({
-        "project_id": ["P001", "P002", "P003", "P004"],
-        "cohort":     ["Female", "Female", "Male", "Male"],
-        "ward_code":  ["PICU", "NICU", "PICU", "NICU"],
-    })
+    df = pd.DataFrame(
+        {
+            "project_id": ["P001", "P002", "P003", "P004"],
+            "cohort": ["Female", "Female", "Male", "Male"],
+            "ward_code": ["PICU", "NICU", "PICU", "NICU"],
+        }
+    )
     obj = CategoricalRatios(df, df_pde, col="ward_code").compute()
     assert obj._test_result is None
 
@@ -131,8 +148,10 @@ def test_chi_square_skipped_when_cell_below_5(df_pde):
 # plot()
 # ---------------------------------------------------------------------------
 
+
 def test_plot_returns_figure(df_two_cohorts, df_pde):
     import plotly.graph_objects as go
+
     obj = CategoricalRatios(df_two_cohorts, df_pde, col="ward_code").compute()
     fig = obj.plot()
     assert isinstance(fig, go.Figure)
@@ -153,6 +172,7 @@ def test_plot_barmode_is_stack(df_two_cohorts, df_pde):
 # ---------------------------------------------------------------------------
 # to_dict()
 # ---------------------------------------------------------------------------
+
 
 def test_to_dict_has_expected_keys(df_two_cohorts, df_pde):
     obj = CategoricalRatios(df_two_cohorts, df_pde, col="ward_code").compute()
