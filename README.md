@@ -114,7 +114,7 @@ pip install -e ".[dev]"
 git config core.hooksPath hooks/
 ```
 
-This activates the pre-commit pipeline (ruff, mypy, AI review). To skip on a single commit: `git commit --no-verify`.
+This activates the pre-commit pipeline (black, mypy, AI review). To skip on a single commit: `git commit --no-verify`.
 
 ### Configure
 Edit `config/config.yaml`:

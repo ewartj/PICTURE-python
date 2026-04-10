@@ -72,7 +72,7 @@ tests/
 - pandas, polars, scipy, lifelines, prophet, plotly, geopandas
 - PyYAML, structlog
 - Tests: pytest + pytest-asyncio, httpx (AsyncClient for FastAPI tests)
-- Linting: ruff (line-length 100, py311), mypy (non-strict)
+- Formatting: black (line-length 100, py311), mypy (non-strict)
 
 ## Code Standards
 
@@ -81,4 +81,4 @@ tests/
 - API layer does no computation — delegate everything to `core/`
 - Use Pydantic v2 schemas for all API request/response validation
 - Line length: 100, target Python 3.11
-- Run `ruff check` and `mypy` before committing
+- Run `black .` and `mypy` before committing
