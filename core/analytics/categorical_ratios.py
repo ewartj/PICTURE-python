@@ -43,7 +43,7 @@ class CategoricalRatios(AnalysisBase):
         self._test_result: Optional[str] = None
 
     def compute(self) -> "CategoricalRatios":
-        df = self.df_rdv[[self.cohort_col, self.col]].copy()
+        df = self._require_rdv()[[self.cohort_col, self.col]].copy()
         # Cast to str first so Categorical columns accept the "Unknown" fill value.
         # astype(str) turns NaN → "nan" and None → "None"; normalise both to "Unknown".
         df[self.col] = (
@@ -120,7 +120,7 @@ class CategoricalRatios(AnalysisBase):
 
     def to_dict(self) -> dict[str, Any]:
         self._require_computed()
-        table = self._result.copy()
+        table = self._require_computed().copy()
         # Round percentages for the API response
         for col in table.columns:
             if col != self.col:

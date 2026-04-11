@@ -48,11 +48,10 @@ class EventCount(AnalysisBase):
 
     def compute(self) -> "EventCount":
         # Select only needed columns before copying — avoids holding the full RDV.
-        id_col = "cohort_id" if "cohort_id" in self.df_rdv.columns else "project_id"
+        df_rdv = self._require_rdv()
+        id_col = "cohort_id" if "cohort_id" in df_rdv.columns else "project_id"
         df = (
-            self.df_rdv[[id_col, self.event_col, self.cohort_col]]
-            .dropna(subset=[self.event_col])
-            .copy()
+            df_rdv[[id_col, self.event_col, self.cohort_col]].dropna(subset=[self.event_col]).copy()
         )
 
         if self.count_unique:
@@ -71,7 +70,8 @@ class EventCount(AnalysisBase):
         # Total patients per cohort: use df_pde as denominator so patients
         # with zero events (absent from df_rdv) are still counted.
         n_patients = (
-            self.df_pde.groupby(self.cohort_col)["project_id"]
+            self._require_pde()
+            .groupby(self.cohort_col)["project_id"]
             .nunique()
             .reset_index(name="n_proj_ids")
         )
@@ -136,7 +136,7 @@ class EventCount(AnalysisBase):
     def to_dict(self) -> dict[str, Any]:
         self._require_computed()
         return {
-            "table": self._result.to_dict(orient="records"),
+            "table": self._require_computed().to_dict(orient="records"),
             "plot": self.plot().to_json(),
             "meta": {
                 "event_col": self.event_col,

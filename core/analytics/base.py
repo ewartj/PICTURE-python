@@ -88,6 +88,22 @@ class AnalysisBase(ABC):
             )
         return self._result
 
+    def _require_rdv(self) -> pd.DataFrame:
+        if self.df_rdv is None:
+            raise RuntimeError(
+                f"{self.__class__.__name__}: df_rdv has been freed. "
+                "Call compute() before free_input_data()."
+            )
+        return self.df_rdv
+
+    def _require_pde(self) -> pd.DataFrame:
+        if self.df_pde is None:
+            raise RuntimeError(
+                f"{self.__class__.__name__}: df_pde has been freed. "
+                "Call compute() before free_input_data()."
+            )
+        return self.df_pde
+
     @property
     def cohorts(self) -> list[str]:
         """Sorted list of cohort labels present in the data."""

@@ -59,11 +59,10 @@ class FrequencyAnalysis(AnalysisBase):
         logger.info("FrequencyAnalysis.compute — event_col=%s", self.event_col)
 
         # Select only needed columns before copying to avoid holding the full RDV.
-        id_col = "cohort_id" if "cohort_id" in self.df_rdv.columns else "project_id"
+        df_rdv = self._require_rdv()
+        id_col = "cohort_id" if "cohort_id" in df_rdv.columns else "project_id"
         df = (
-            self.df_rdv[[id_col, self.event_col, self.cohort_col]]
-            .dropna(subset=[self.event_col])
-            .copy()
+            df_rdv[[id_col, self.event_col, self.cohort_col]].dropna(subset=[self.event_col]).copy()
         )
         df["_event"] = df[self.event_col].astype(str)
         df["_cohort"] = df[self.cohort_col].astype(str)

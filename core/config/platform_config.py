@@ -73,6 +73,10 @@ class PlatformConfig:
     external_data_dir: Optional[Path] = None
     n_max: Optional[int] = None
     infrastructure: str = "local"
+    # Data backend: "file" (CSV/Parquet) or "postgres"
+    backend: str = "file"
+    # SQLAlchemy connection string — required when backend="postgres"
+    db_url: Optional[str] = None
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_reload: bool = True
@@ -185,6 +189,8 @@ def load_platform_config(path: Optional[Path] = None) -> PlatformConfig:
         "infrastructure", "local"
     )
     n_max_raw = os.environ.get("PICTURE_N_MAX") or default.get("n_max")
+    backend = os.environ.get("PICTURE_BACKEND") or default.get("backend", "file")
+    db_url = os.environ.get("DATABASE_URL") or default.get("db_url")
 
     data_dir = _to_path_or_none(data_dir_str)
     app_dir = _to_path_or_none(app_dir_str)
@@ -200,6 +206,8 @@ def load_platform_config(path: Optional[Path] = None) -> PlatformConfig:
         external_data_dir=_to_path_or_none(default.get("external_data_dir")),
         n_max=n_max,
         infrastructure=str(infrastructure),
+        backend=str(backend),
+        db_url=str(db_url) if db_url else None,
         api_host=str(api_cfg.get("host", "0.0.0.0")),
         api_port=int(api_cfg.get("port", 8000)),
         api_reload=bool(api_cfg.get("reload", True)),
