@@ -39,13 +39,28 @@ from core.config.app_config import AppConfig, load_app_configs
 from core.config.platform_config import _resolve_app_yaml, load_platform_config
 from core.cohort.filters import resolve_cohort
 from core.cohort.models import ResolvedCohort
-from core.data.loader import load_all_rdvs
+from core.data.provider import DataProvider
+from core.data.providers.file import FileProvider
+from core.data.providers.postgres import PostgresProvider
 from ui.components.demographics import render as render_demographics
 from ui.components.event_count import render as render_event_count
 from ui.components.event_time import render as render_event_time
 from ui.components.frequency import render as render_frequency
 
 _platform = load_platform_config()
+_using_postgres = _platform.backend == "postgres"
+
+
+def _make_provider(data_dir: str) -> DataProvider:
+    if _using_postgres:
+        if not _platform.db_url:
+            st.error(
+                "backend=postgres but no db_url is configured. Check config.yaml or DATABASE_URL."
+            )
+            st.stop()
+        return PostgresProvider(_platform.db_url)
+    return FileProvider(data_dir)
+
 
 st.set_page_config(
     page_title="PICTURE Analytics",
@@ -76,13 +91,14 @@ def _load_apps(app_dir: str) -> list[AppConfig]:
 
 
 def _load_rdvs(app: AppConfig, data_dir: str) -> dict:
-    key = f"rdvs:{app.id}:{data_dir}"
+    key = f"rdvs:{app.id}:{data_dir or 'postgres'}"
     if key not in st.session_state:
         # Load only RDVs referenced in this app's YAML.
         # pde is always included — analytics modules use it for cohort sizes.
         needed = sorted(app.all_rdv_names | {"pde"})
         with st.spinner(f"Loading {len(needed)} data table(s)…"):
-            st.session_state[key] = load_all_rdvs(data_dir, rdvs=needed)
+            provider = _make_provider(data_dir)
+            st.session_state[key] = provider.load_all_rdvs(rdvs=needed)
     return st.session_state[key]
 
 
@@ -125,13 +141,17 @@ with st.sidebar:
         help="Folder containing app YAML definitions. Can be local even when data is remote.",
     )
 
-    _default_data_dir = str(_platform.data_dir) if _platform.data_dir else ""
-    data_dir = st.text_input(
-        "Data directory",
-        value=_default_data_dir,
-        placeholder="/path/to/rdv/data",
-        help="Folder containing RDV files. Can be a remote/cloud path.",
-    )
+    if _using_postgres:
+        st.caption("Data source: PostgreSQL")
+        data_dir = ""
+    else:
+        _default_data_dir = str(_platform.data_dir) if _platform.data_dir else ""
+        data_dir = st.text_input(
+            "Data directory",
+            value=_default_data_dir,
+            placeholder="/path/to/rdv/data",
+            help="Folder containing RDV files.",
+        )
 
     # Back button + patient selector shown only when an app is open
     if st.session_state.get("selected_app_id") is not None:
@@ -160,15 +180,19 @@ with st.sidebar:
     st.markdown("---")
     st.caption("UI layer — will be replaced by React frontend.")
 
-if not app_dir or not data_dir:
-    st.info("Enter an App YAML directory and a data directory in the sidebar to get started.")
+if not app_dir:
+    st.info("Enter an App YAML directory in the sidebar to get started.")
+    st.stop()
+
+if not _using_postgres and not data_dir:
+    st.info("Enter a data directory in the sidebar to get started.")
     st.stop()
 
 if not Path(app_dir).is_dir():
     st.error(f"App YAML directory not found: `{app_dir}`")
     st.stop()
 
-if not Path(data_dir).is_dir():
+if not _using_postgres and not Path(data_dir).is_dir():
     st.error(f"Data directory not found: `{data_dir}`")
     st.stop()
 

@@ -1,0 +1,105 @@
+# PICTURE — Docker Compose
+#
+# Normal startup (data already loaded):
+#   docker compose up
+#
+# First-time setup (or after new data arrives):
+#   docker compose --profile migrate up --exit-code-from migrate migrate
+#   docker compose up
+#
+# Environment variables (copy .env.example → .env and edit):
+#   DATABASE_URL      — Postgres connection string used by all services
+#   PICTURE_DATA_DIR  — host path to CSV/Parquet files (used by migrate only)
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       picture
+      POSTGRES_USER:     picture
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # survives container restarts
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro  # applied once on first start
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U picture -d picture"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── One-time data migration ─────────────────────────────────────────────────
+  # Run with:  docker compose --profile migrate up migrate
+  migrate:
+    profiles: ["migrate"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: picture-app
+    command: >
+      python scripts/load_to_postgres.py
+        --data-dir /data
+        --db-url ${DATABASE_URL:-postgresql://picture:secret@db:5432/picture}
+        --if-exists replace
+    volumes:
+      - ${PICTURE_DATA_DIR:-./data/dmv/csv}:/data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: picture-app
+    command: >
+      uvicorn api.main:app
+        --host 0.0.0.0
+        --port 8000
+        --no-access-log
+    environment:
+      PICTURE_BACKEND: postgres
+      DATABASE_URL: ${DATABASE_URL:-postgresql://picture:secret@db:5432/picture}
+      PICTURE_APP_DIR: /app/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/docs > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Streamlit frontend ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: picture-app
+    command: >
+      streamlit run ui/app.py
+        --server.address 0.0.0.0
+        --server.port 8501
+        --server.headless true
+    environment:
+      PICTURE_BACKEND: postgres
+      DATABASE_URL: ${DATABASE_URL:-postgresql://picture:secret@db:5432/picture}
+      PICTURE_APP_DIR: /app/app
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:

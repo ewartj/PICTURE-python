@@ -59,13 +59,14 @@ class EventTimeAnalysis(AnalysisBase):
         self.top_n = top_n
 
     def compute(self) -> "EventTimeAnalysis":
+        df_rdv = self._require_rdv()
         cols = list(
             dict.fromkeys(
                 ["project_id", self.event_col, self.cohort_col, "start_datetime"]
-                + (["end_datetime"] if "end_datetime" in self.df_rdv.columns else [])
+                + (["end_datetime"] if "end_datetime" in df_rdv.columns else [])
             )
         )
-        df = self.df_rdv[cols].dropna(subset=[self.event_col]).copy()
+        df = df_rdv[cols].dropna(subset=[self.event_col]).copy()
 
         df["start_dt"] = pd.to_datetime(df["start_datetime"]).dt.normalize()
         df["end_dt"] = (

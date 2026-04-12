@@ -219,5 +219,11 @@ __marimo__/
 data/.mcp.json
 data/*
 
+# Docker local overrides (hot-reload dev setup, not for production)
+docker-compose.override.yml
+
+# Coverage report (generated artefact)
+coverage.json
+
 # Claude Code — secrets (token in env field)
 .mcp.json

@@ -104,19 +104,64 @@ Each module in `core/analytics/` follows the same interface (defined by `Analysi
 
 ## Running the app
 
-### Install
+### Option A — Docker (recommended)
+
+The full stack runs as three containers (frontend, backend, Postgres) orchestrated by Docker Compose. Data is loaded into Postgres once and persists across restarts in a named volume.
+
+#### First-time setup
+
+```bash
+# 1. Configure environment
+cp .env.example .env          # edit POSTGRES_PASSWORD if needed
+
+# 2. Build the image and load RDV data into Postgres
+docker compose --profile migrate up --exit-code-from migrate migrate
+
+# 3. Start the app
+docker compose up
+```
+
+| Service | URL |
+|---|---|
+| Streamlit UI | http://localhost:8501 |
+| FastAPI (REST + docs) | http://localhost:8000/docs |
+
+Postgres is intentionally not exposed outside the Docker network. To connect directly (e.g. with psql or a GUI tool):
+```bash
+docker compose exec db psql -U picture -d picture
+```
+
+#### Every subsequent run
+
+```bash
+docker compose up
+```
+
+The `postgres_data` volume persists the database between restarts. Only `docker compose down -v` deletes it (the `-v` flag is required — a plain `docker compose down` leaves data intact).
+
+#### Re-loading data (new CSV/Parquet files)
+
+```bash
+docker compose --profile migrate up --exit-code-from migrate migrate
+```
+
+---
+
+### Option B — Local (development)
+
+#### Install
 ```bash
 pip install -e ".[dev]"
 ```
 
-### Enable git hooks
+#### Enable git hooks
 ```bash
 git config core.hooksPath hooks/
 ```
 
 This activates the pre-commit pipeline (black, mypy, AI review). To skip on a single commit: `git commit --no-verify`.
 
-### Configure
+#### Configure
 Edit `config/config.yaml`:
 ```yaml
 default:
@@ -124,22 +169,99 @@ default:
   app_dir:  /path/to/app/yamls     # folder containing app YAML definitions
 ```
 
-### Streamlit UI (temporary)
+To use Postgres instead of flat files, set `backend: postgres` and `db_url` in `config/config.yaml`, or use environment variables:
+```bash
+export PICTURE_BACKEND=postgres
+export DATABASE_URL=postgresql://user:pass@localhost:5432/picture
+```
+
+Load flat files into Postgres once with:
+```bash
+python scripts/load_to_postgres.py --data-dir data/dmv/csv --db-url $DATABASE_URL
+```
+
+#### Streamlit UI (temporary)
 ```bash
 streamlit run ui/app.py
 ```
-Opens at `http://localhost:8501`. The sidebar is pre-populated from `config.yaml`. The home screen shows a card for each app YAML found in `app_dir`; clicking **Open** resolves cohorts and renders the analysis tabs.
+Opens at `http://localhost:8501`.
 
-### API server
+#### API server
 ```bash
 uvicorn api.main:app --reload --port 8000
 ```
 Interactive docs at `http://localhost:8000/docs`.
 
-### Tests
+#### Tests
 ```bash
 pytest
 ```
+
+---
+
+## Testing
+
+### Unit and integration tests
+
+The test suite uses in-memory DataFrames — no database or running server needed.
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=core --cov=api
+
+# A specific file
+pytest tests/test_integration.py
+```
+
+| Test file | What it covers |
+|---|---|
+| `tests/test_integration.py` | Full pipeline: YAML cohort → resolve → analytics → `to_dict()` |
+| `tests/api/test_analytics_routes.py` | FastAPI routes via TestClient (no real data) |
+| `tests/core/test_frequency.py` | Frequency analysis computation |
+| `tests/core/test_event_count.py` | Event count distribution |
+| `tests/core/test_event_time.py` | Event timing analysis |
+| `tests/core/test_cohort_filters.py` | Cohort filter resolution |
+| `tests/core/test_cohort_filters_window.py` | Temporal window filters |
+| `tests/core/test_categorical_ratios.py` | Categorical ratio computation |
+| `tests/core/test_cohort_formatting.py` | Cohort output formatting |
+| `tests/core/test_result_formatting.py` | Analytics result formatting |
+| `tests/core/test_analytics_runner.py` | Service layer orchestration |
+| `tests/core/test_app_config.py` | App YAML parsing |
+| `tests/core/test_rdv_lookups.py` | RDV schema registry |
+
+### Running tests inside Docker
+
+```bash
+docker compose exec backend pytest
+```
+
+### Smoke-testing the running stack
+
+**Check the API is up:**
+```bash
+curl -s http://localhost:8000/docs | grep -o "<title>.*</title>"
+```
+
+**List available RDVs:**
+```bash
+curl -s http://localhost:8000/data/rdvs | python -m json.tool
+```
+
+**Run a frequency analysis:**
+```bash
+curl -s -X POST http://localhost:8000/analytics/frequency \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rdv": "dia",
+    "event_col": "diag_name",
+    "cohorts": []
+  }' | python -m json.tool
+```
+
+**Check the Streamlit UI** — open http://localhost:8501 in a browser. The sidebar should show "Data source: PostgreSQL" and the app gallery should load from the configured `app_dir`.
 
 ---
 
@@ -148,26 +270,39 @@ pytest
 ```
 picture-python/
 ├── config/
-│   └── config.yaml          # platform config (data_dir, app_dir, etc.)
+│   └── config.yaml          # platform config (data_dir, backend, db_url, etc.)
 ├── app/
 │   └── sample_app.yaml      # example app YAML definition
 ├── core/
 │   ├── analytics/           # analytics modules (AnalysisBase subclasses)
 │   ├── cohort/              # cohort models + filter resolution engine
 │   ├── config/              # app YAML + platform config parsers
-│   ├── data/                # RDV loader + schema registry
+│   ├── data/
+│   │   ├── provider.py      # DataProvider protocol (backend-agnostic interface)
+│   │   ├── loader.py        # CSV/Parquet loading helpers
+│   │   ├── rdv.py           # RDV schema registry
+│   │   └── providers/
+│   │       ├── file.py      # FileProvider  — reads CSV/Parquet files
+│   │       └── postgres.py  # PostgresProvider — reads from Postgres via SQLAlchemy
 │   └── prepressr/           # Jinja2 report template preprocessor
 ├── api/
 │   ├── main.py              # FastAPI app factory
-│   ├── deps.py              # dependency injection (config, data loading)
+│   ├── deps.py              # dependency injection (config, provider factory)
 │   ├── routes/              # endpoint handlers
 │   └── schemas/             # Pydantic request/response models
 ├── ui/
 │   ├── app.py               # Streamlit app (home screen + analysis view)
 │   └── pages/               # one file per analytics module
+├── db/
+│   └── schema.sql           # Postgres DDL for all RDV tables + indexes
+├── scripts/
+│   └── load_to_postgres.py  # one-time migration: flat files → Postgres
 ├── tests/
 │   ├── core/                # unit tests for analytics + cohort filters
 │   └── api/                 # integration tests using FastAPI TestClient
+├── Dockerfile               # single image used by all docker compose services
+├── docker-compose.yml       # backend + frontend + db + migrate (profile)
+├── .env.example             # environment variable template
 └── pyproject.toml
 ```
 
