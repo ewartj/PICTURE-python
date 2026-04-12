@@ -21,13 +21,20 @@ default:
   # Optional external data directory (e.g. shapefiles)
   external_data_dir: null
 
-  # Data backend: "file" (CSV/Parquet) or "postgres"
+  # Data backend: "file" (CSV/Parquet), "postgres", or "omop"
   # Override with environment variable PICTURE_BACKEND.
+  #
+  #   file     — reads CSV/Parquet files from data_dir (default)
+  #   postgres — reads from a PostgreSQL database loaded by scripts/load_to_postgres.py
+  #   omop     — reads directly from an OMOP CDM v5.4 database
+  #
   backend: file
 
-  # SQLAlchemy connection string — required when backend=postgres.
+  # SQLAlchemy connection string — required when backend=postgres or backend=omop.
   # Override with environment variable DATABASE_URL.
-  # Example: postgresql://picture:secret@localhost:5432/picture
+  # Examples:
+  #   postgresql://picture:secret@localhost:5432/picture
+  #   postgresql://user:pass@omop-host:5432/omop_db
   db_url: null
 
 api:

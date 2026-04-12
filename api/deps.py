@@ -23,6 +23,7 @@ from core.config.app_config import AppConfig, load_app_configs
 from core.config.platform_config import PlatformConfig, load_platform_config
 from core.data.provider import DataProvider
 from core.data.providers.file import FileProvider
+from core.data.providers.omop import OmopProvider
 from core.data.providers.postgres import PostgresProvider
 
 logger = logging.getLogger(__name__)
@@ -89,9 +90,9 @@ def get_data_dir(
 ) -> Optional[Path]:
     """Resolve the data directory from query param or platform config.
 
-    Returns None when the backend is postgres (data_dir is not required).
+    Returns None when the backend is postgres or omop (data_dir is not required).
     """
-    if platform.backend == "postgres":
+    if platform.backend in ("postgres", "omop"):
         return None
 
     resolved = data_dir or (str(platform.data_dir) if platform.data_dir else None)
@@ -110,7 +111,7 @@ def get_data_provider(
     platform: PlatformConfig = Depends(get_platform_config),
     data_dir: Optional[Path] = Depends(get_data_dir),
 ) -> DataProvider:
-    """Return the configured DataProvider (file or postgres)."""
+    """Return the configured DataProvider (file, postgres, or omop)."""
     if platform.backend == "postgres":
         if not platform.db_url:
             raise HTTPException(
@@ -118,6 +119,13 @@ def get_data_provider(
                 detail="backend=postgres requires db_url in config.yaml or DATABASE_URL env var",
             )
         return PostgresProvider(platform.db_url)
+    elif platform.backend == "omop":
+        if not platform.db_url:
+            raise HTTPException(
+                status_code=500,
+                detail="backend=omop requires db_url in config.yaml or DATABASE_URL env var",
+            )
+        return OmopProvider(platform.db_url)
     else:
         if data_dir is None:
             raise HTTPException(status_code=500, detail="data_dir could not be resolved")
