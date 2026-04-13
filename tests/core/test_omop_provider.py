@@ -28,7 +28,6 @@ from core.config.platform_config import PlatformConfig
 from core.data.provider import DataProvider
 from core.data.providers.omop import OmopProvider, _build_query, _OMOP_QUERIES
 
-
 # ---------------------------------------------------------------------------
 # _build_query
 # ---------------------------------------------------------------------------
@@ -131,16 +130,28 @@ class TestLoadRdv:
         assert "pde" in str(exc_info.value)
 
     def test_calls_read_sql_with_correct_table(self, provider):
-        sample_df = pd.DataFrame({"project_id": ["P001"], "birth_date": ["1990-01-01"],
-                                   "sex_name": ["Female"], "death_date": [None]})
+        sample_df = pd.DataFrame(
+            {
+                "project_id": ["P001"],
+                "birth_date": ["1990-01-01"],
+                "sex_name": ["Female"],
+                "death_date": [None],
+            }
+        )
         with patch("core.data.providers.omop.pd.read_sql", return_value=sample_df) as mock_sql:
             provider.load_rdv("pde")
         sql_text = mock_sql.call_args[0][0].text
         assert "person" in sql_text
 
     def test_n_max_injects_limit(self, provider):
-        sample_df = pd.DataFrame({"project_id": ["P001"], "birth_date": ["1990-01-01"],
-                                   "sex_name": ["Female"], "death_date": [None]})
+        sample_df = pd.DataFrame(
+            {
+                "project_id": ["P001"],
+                "birth_date": ["1990-01-01"],
+                "sex_name": ["Female"],
+                "death_date": [None],
+            }
+        )
         with patch("core.data.providers.omop.pd.read_sql", return_value=sample_df) as mock_sql:
             provider.load_rdv("pde", n_max=10)
         sql_text = mock_sql.call_args[0][0].text
@@ -170,15 +181,27 @@ class TestLoadAllRdvs:
             return OmopProvider("postgresql://fake/db")
 
     def test_rdvs_subset_respected(self, provider):
-        pde_df = pd.DataFrame({"project_id": ["P001"], "birth_date": ["1990-01-01"],
-                                "sex_name": ["Female"], "death_date": [None]})
+        pde_df = pd.DataFrame(
+            {
+                "project_id": ["P001"],
+                "birth_date": ["1990-01-01"],
+                "sex_name": ["Female"],
+                "death_date": [None],
+            }
+        )
         with patch("core.data.providers.omop.pd.read_sql", return_value=pde_df):
             result = provider.load_all_rdvs(rdvs=["pde"])
         assert set(result.keys()) == {"pde"}
 
     def test_unknown_rdv_in_subset_is_skipped(self, provider):
-        pde_df = pd.DataFrame({"project_id": ["P001"], "birth_date": ["1990-01-01"],
-                                "sex_name": ["Female"], "death_date": [None]})
+        pde_df = pd.DataFrame(
+            {
+                "project_id": ["P001"],
+                "birth_date": ["1990-01-01"],
+                "sex_name": ["Female"],
+                "death_date": [None],
+            }
+        )
         with patch("core.data.providers.omop.pd.read_sql", return_value=pde_df):
             result = provider.load_all_rdvs(rdvs=["pde", "not_an_rdv"])  # type: ignore[list-item]
         assert "not_an_rdv" not in result
@@ -199,8 +222,14 @@ class TestSchemaPrefix:
         with patch("core.data.providers.omop.create_engine"):
             provider = OmopProvider("postgresql://fake/db", schema="cdm")
 
-        pde_df = pd.DataFrame({"project_id": ["P001"], "birth_date": ["1990-01-01"],
-                                "sex_name": ["Female"], "death_date": [None]})
+        pde_df = pd.DataFrame(
+            {
+                "project_id": ["P001"],
+                "birth_date": ["1990-01-01"],
+                "sex_name": ["Female"],
+                "death_date": [None],
+            }
+        )
         with patch("core.data.providers.omop.pd.read_sql", return_value=pde_df) as mock_sql:
             provider.load_rdv("pde")
         assert "cdm.person" in mock_sql.call_args[0][0].text
@@ -209,8 +238,14 @@ class TestSchemaPrefix:
         with patch("core.data.providers.omop.create_engine"):
             provider = OmopProvider("postgresql://fake/db")
 
-        pde_df = pd.DataFrame({"project_id": ["P001"], "birth_date": ["1990-01-01"],
-                                "sex_name": ["Female"], "death_date": [None]})
+        pde_df = pd.DataFrame(
+            {
+                "project_id": ["P001"],
+                "birth_date": ["1990-01-01"],
+                "sex_name": ["Female"],
+                "death_date": [None],
+            }
+        )
         with patch("core.data.providers.omop.pd.read_sql", return_value=pde_df) as mock_sql:
             provider.load_rdv("pde")
         call_args = str(mock_sql.call_args)
@@ -240,5 +275,6 @@ class TestDepFactory:
 
     def test_get_data_dir_returns_none_for_omop(self):
         from api.deps import get_data_dir
+
         platform = PlatformConfig(backend="omop", db_url="postgresql://x/x")
         assert get_data_dir(data_dir=None, platform=platform) is None

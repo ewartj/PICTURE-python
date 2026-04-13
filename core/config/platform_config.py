@@ -191,7 +191,6 @@ def load_platform_config(path: Optional[Path] = None) -> PlatformConfig:
     n_max_raw = os.environ.get("PICTURE_N_MAX") or default.get("n_max")
     backend = os.environ.get("PICTURE_BACKEND") or default.get("backend", "file")
     db_url = os.environ.get("DATABASE_URL") or default.get("db_url")
-
     data_dir = _to_path_or_none(data_dir_str)
     app_dir = _to_path_or_none(app_dir_str)
     n_max = _to_int_or_none(n_max_raw)

@@ -58,7 +58,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _OMOP_QUERIES: dict[str, str] = {
-
     # ── Patient Demographics (pde) ─────────────────────────────────────────
     # person + death + concept (gender, ethnicity)
     "pde": """
@@ -82,7 +81,6 @@ _OMOP_QUERIES: dict[str, str] = {
         LEFT JOIN {schema}concept     ec ON p.ethnicity_concept_id = ec.concept_id
         {limit}
     """,
-
     # ── Diagnoses (dia) ────────────────────────────────────────────────────
     # condition_occurrence + concept
     "dia": """
@@ -99,7 +97,6 @@ _OMOP_QUERIES: dict[str, str] = {
         LEFT JOIN {schema}concept             c  ON co.condition_concept_id = c.concept_id
         {limit}
     """,
-
     # ── Hospital Admissions (adm) ──────────────────────────────────────────
     # visit_occurrence + concept (visit type, admission source, discharge)
     "adm": """
@@ -118,7 +115,6 @@ _OMOP_QUERIES: dict[str, str] = {
         LEFT JOIN {schema}concept          dc ON vo.discharge_to_concept_id  = dc.concept_id
         {limit}
     """,
-
     # ── Medication Orders (med) ────────────────────────────────────────────
     # drug_exposure filtered to prescription / order type records
     # drug_type_concept_id:
@@ -143,7 +139,6 @@ _OMOP_QUERIES: dict[str, str] = {
         WHERE de.drug_type_concept_id IN (38000175, 38000177, 32817)
         {limit}
     """,
-
     # ── Medication Administrations (mda) ───────────────────────────────────
     # drug_exposure filtered to administration-type records
     # drug_type_concept_id:
@@ -165,7 +160,6 @@ _OMOP_QUERIES: dict[str, str] = {
         WHERE de.drug_type_concept_id IN (43542356, 32838)
         {limit}
     """,
-
     # ── Procedures (prc) ───────────────────────────────────────────────────
     # procedure_occurrence + concept
     "prc": """
@@ -181,7 +175,6 @@ _OMOP_QUERIES: dict[str, str] = {
         LEFT JOIN {schema}concept             c  ON po.procedure_concept_id = c.concept_id
         {limit}
     """,
-
     # ── Flowsheet Rows (flo) ───────────────────────────────────────────────
     # measurement, excluding lab-type records
     # Excluded measurement_type_concept_ids:
@@ -204,7 +197,6 @@ _OMOP_QUERIES: dict[str, str] = {
         WHERE m.measurement_type_concept_id NOT IN (44818702, 32856, 44818701)
         {limit}
     """,
-
     # ── Lab Results (lab) ──────────────────────────────────────────────────
     # measurement filtered to lab-type records
     "lab": """
@@ -229,7 +221,6 @@ _OMOP_QUERIES: dict[str, str] = {
         WHERE m.measurement_type_concept_id IN (44818702, 32856, 44818701)
         {limit}
     """,
-
     # ── Theatre List (tht) — best effort ───────────────────────────────────
     # OMOP has no theatre-list entity.  Mapped from procedure_occurrence.
     # Theatre-specific fields (anaesthetist, priority, anaesthesia type)
@@ -246,7 +237,6 @@ _OMOP_QUERIES: dict[str, str] = {
         LEFT JOIN {schema}concept             c ON po.procedure_concept_id = c.concept_id
         {limit}
     """,
-
     # ── Ward Stays (wst) ───────────────────────────────────────────────────
     # visit_detail holds sub-visit records (ward/bed level) in OMOP v5.3+.
     # Falls back gracefully if visit_detail is absent (empty result).
@@ -267,7 +257,6 @@ _OMOP_QUERIES: dict[str, str] = {
         LEFT JOIN {schema}care_site    cs ON vd.care_site_id = cs.care_site_id
         {limit}
     """,
-
     # ── Locations (loc) ────────────────────────────────────────────────────
     # person → location
     "loc": """
@@ -333,7 +322,8 @@ class OmopProvider:
             if rdv_str in _BEST_EFFORT_RDVS:
                 logger.warning(
                     "Best-effort RDV '%s' failed — returning empty DataFrame. Error: %s",
-                    rdv_str, exc,
+                    rdv_str,
+                    exc,
                 )
                 return pd.DataFrame()
             raise
