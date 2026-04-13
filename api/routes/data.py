@@ -6,21 +6,18 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends
 
-from api.deps import get_data_dir, get_rdvs
+from api.deps import get_data_provider, get_rdvs
 from api.schemas.analytics import RdvInfoResponse, RdvListResponse
-from core.data.rdv import RDV_FILE_MAP, RDV_SCHEMAS
+from core.data.provider import DataProvider
+from core.data.rdv import RDV_SCHEMAS
 
 router = APIRouter(prefix="/data", tags=["data"])
 
 
 @router.get("/rdvs", response_model=RdvListResponse)
-def list_rdvs(data_dir: Path = Depends(get_data_dir)):
-    """Return RDV names that have a data file in data_dir."""
-    available = []
-    for rdv, stem in RDV_FILE_MAP.items():
-        if (data_dir / f"{stem}.parquet").exists() or (data_dir / f"{stem}.csv").exists():
-            available.append(rdv)
-    return RdvListResponse(available=available)
+def list_rdvs(provider: DataProvider = Depends(get_data_provider)):
+    """Return RDV names available from the configured data provider."""
+    return RdvListResponse(available=list(provider.list_available_rdvs()))
 
 
 @router.get("/rdvs/{rdv}", response_model=RdvInfoResponse)

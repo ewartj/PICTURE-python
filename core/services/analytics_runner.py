@@ -13,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 
+from core.analytics.categorical_ratios import CategoricalRatios
+from core.analytics.cohort_characteristics import CohortCharacteristics
 from core.analytics.event_count import EventCount
 from core.analytics.event_time import EventTimeAnalysis
 from core.analytics.frequency import FrequencyAnalysis
@@ -145,3 +147,30 @@ def run_event_time(
         plot_type=plot_type,  # type: ignore[arg-type]
         log_scale=log_scale,
     ).compute()
+
+
+def run_categorical_ratios(
+    rdvs: dict[str, pd.DataFrame],
+    rdv_name: str,
+    col: str,
+    resolved_cohorts: list[ResolvedCohort],
+) -> CategoricalRatios:
+    """Build, compute, and return a :class:`CategoricalRatios`."""
+    logger.info("run_categorical_ratios: rdv=%s col=%s", rdv_name, col)
+    df = cohorted_rdv(require_rdv(rdv_name, rdvs), resolved_cohorts)
+    return CategoricalRatios(
+        df_rdv=df,
+        df_pde=rdvs.get("pde", pd.DataFrame()),
+        col=col,
+    ).compute()
+
+
+def run_cohort_characteristics(
+    rdvs: dict[str, pd.DataFrame],
+    resolved_cohorts: list[ResolvedCohort],
+) -> CohortCharacteristics:
+    """Build, compute, and return a :class:`CohortCharacteristics`."""
+    logger.info("run_cohort_characteristics")
+    pde = require_rdv("pde", rdvs)
+    df = cohorted_rdv(pde, resolved_cohorts)
+    return CohortCharacteristics(df_rdv=df, df_pde=df).compute()

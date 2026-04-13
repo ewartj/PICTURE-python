@@ -15,6 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import get_rdvs
 from api.schemas.analytics import (
+    CategoricalRatiosRequest,
+    CategoricalRatiosResponse,
+    CohortCharacteristicsRequest,
+    CohortCharacteristicsResponse,
     EventCountRequest,
     EventCountResponse,
     EventTimeRequest,
@@ -25,6 +29,8 @@ from api.schemas.analytics import (
 from core.services.analytics_runner import (
     require_rdv,
     resolve_cohorts,
+    run_categorical_ratios,
+    run_cohort_characteristics,
     run_event_count,
     run_event_time,
     run_frequency,
@@ -107,3 +113,45 @@ def event_time_analysis(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return EventTimeResponse(**result)
+
+
+@router.post("/categorical-ratios", response_model=CategoricalRatiosResponse)
+def categorical_ratios_analysis(
+    request: CategoricalRatiosRequest, rdvs: dict[str, object] = Depends(get_rdvs)
+) -> CategoricalRatiosResponse:
+    """100%-stacked bar chart of a categorical column split by cohort."""
+    try:
+        require_rdv(request.rdv, rdvs)  # type: ignore[arg-type]
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    logger.info("POST /analytics/categorical-ratios rdv=%s col=%s", request.rdv, request.col)
+    try:
+        cohorts = resolve_cohorts(request.cohort_definitions, rdvs)  # type: ignore[arg-type]
+        result = run_categorical_ratios(
+            rdvs, request.rdv, request.col, cohorts
+        ).to_dict()  # type: ignore[arg-type]
+    except Exception as exc:
+        logger.exception("categorical_ratios_analysis failed")
+        raise HTTPException(status_code=500, detail="Analysis failed — see server logs.") from exc
+
+    return CategoricalRatiosResponse(**result)
+
+
+@router.post("/cohort-characteristics", response_model=CohortCharacteristicsResponse)
+def cohort_characteristics_analysis(
+    request: CohortCharacteristicsRequest, rdvs: dict[str, object] = Depends(get_rdvs)
+) -> CohortCharacteristicsResponse:
+    """Demographic summary table for each cohort."""
+    if "pde" not in rdvs:
+        raise HTTPException(status_code=404, detail="Demographics RDV (pde) is required.")
+
+    logger.info("POST /analytics/cohort-characteristics")
+    try:
+        cohorts = resolve_cohorts(request.cohort_definitions, rdvs)  # type: ignore[arg-type]
+        result = run_cohort_characteristics(rdvs, cohorts).to_dict()  # type: ignore[arg-type]
+    except Exception as exc:
+        logger.exception("cohort_characteristics_analysis failed")
+        raise HTTPException(status_code=500, detail="Analysis failed — see server logs.") from exc
+
+    return CohortCharacteristicsResponse(**result)

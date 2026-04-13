@@ -44,14 +44,13 @@ class AnalysisResponseBase(BaseModel):
 
 
 class FrequencyRequest(BaseModel):
-    data_dir: str = Field(..., min_length=1)
     rdv: str = Field("dia", min_length=1)
     event_col: str = Field(..., min_length=1)
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
     n_max: Optional[int] = Field(None, gt=0)
     value: Literal["frequency", "count"] = "frequency"
 
-    @field_validator("data_dir", "rdv", "event_col")
+    @field_validator("rdv", "event_col")
     @classmethod
     def no_whitespace_only(cls, v: str) -> str:
         if not v.strip():
@@ -69,13 +68,13 @@ class FrequencyResponse(AnalysisResponseBase):
 
 
 class EventCountRequest(BaseModel):
-    data_dir: str = Field(..., min_length=1)
     rdv: str = Field(..., min_length=1)
     event_col: str = Field(..., min_length=1)
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
     count_unique: bool = True
+    n_max: Optional[int] = Field(None, gt=0)
 
-    @field_validator("data_dir", "rdv", "event_col")
+    @field_validator("rdv", "event_col")
     @classmethod
     def no_whitespace_only(cls, v: str) -> str:
         if not v.strip():
@@ -93,14 +92,14 @@ class EventCountResponse(AnalysisResponseBase):
 
 
 class EventTimeRequest(BaseModel):
-    data_dir: str = Field(..., min_length=1)
     rdv: str = Field(..., min_length=1)
     event_col: str = Field(..., min_length=1)
     cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
     plot_type: Literal["boxplot", "histogram"] = "boxplot"
     log_scale: bool = False
+    n_max: Optional[int] = Field(None, gt=0)
 
-    @field_validator("data_dir", "rdv", "event_col")
+    @field_validator("rdv", "event_col")
     @classmethod
     def no_whitespace_only(cls, v: str) -> str:
         if not v.strip():
@@ -117,12 +116,47 @@ class EventTimeResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Categorical Ratios
+# ---------------------------------------------------------------------------
+
+
+class CategoricalRatiosRequest(BaseModel):
+    rdv: str = Field(..., min_length=1)
+    col: str = Field(..., min_length=1)
+    cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
+
+    @field_validator("rdv", "col")
+    @classmethod
+    def no_whitespace_only(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+
+class CategoricalRatiosResponse(AnalysisResponseBase):
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Cohort Characteristics
+# ---------------------------------------------------------------------------
+
+
+class CohortCharacteristicsRequest(BaseModel):
+    cohort_definitions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class CohortCharacteristicsResponse(AnalysisResponseBase):
+    pass
+
+
+# ---------------------------------------------------------------------------
 # Data endpoint schemas
 # ---------------------------------------------------------------------------
 
 
 class RdvListResponse(BaseModel):
-    available: list[str]  # RDV names found in data_dir
+    available: list[str]
 
 
 class RdvInfoResponse(BaseModel):
