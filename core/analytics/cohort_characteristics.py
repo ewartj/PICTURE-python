@@ -190,10 +190,7 @@ class CohortCharacteristics(AnalysisBase):
             for idx, label in enumerate(cohort_labels):
                 grp = raw[raw[cohort_col] == label]
                 total = len(grp)
-                counts = {
-                    s: (grp["sex_name"] == s).sum()
-                    for s in ["Female", "Male"]
-                }
+                counts = {s: (grp["sex_name"] == s).sum() for s in ["Female", "Male"]}
                 counts["Indeterminate / Unknown"] = total - counts["Female"] - counts["Male"]
                 pcts = [100 * counts[s] / total if total else 0 for s in sex_order]
                 fig.add_trace(

@@ -13,77 +13,91 @@ A Python port of the [PICTURE R platform](https://github.com/gosh-dre/picture.pl
 │                     core/                            │
 │  (pure Python — no HTTP, no UI, no framework)        │
 │                                                      │
-│  data/       — load RDVs from Parquet/CSV            │
+│  data/       — load RDVs from Parquet/CSV/Postgres   │
 │  cohort/     — parse YAML filters, resolve cohorts   │
 │  analytics/  — compute results, produce Plotly figs  │
 │  config/     — parse platform + app YAML config      │
 │  prepressr/  — Jinja2 report templating              │
-└──────────────────┬──────────────────────┬────────────┘
-                   │                      │
-       calls directly                calls directly
-                   │                      │
-┌──────────────────▼──────┐  ┌────────────▼───────────┐
-│        api/              │  │        ui/              │
-│  (FastAPI — HTTP layer)  │  │  (Streamlit — temp UI)  │
-│                          │  │                         │
-│  routes/analytics.py     │  │  app.py                 │
-│  routes/apps.py          │  │  pages/frequency.py     │
-│  routes/cohorts.py       │  │  pages/demographics.py  │
-│  routes/data.py          │  │  pages/distribution.py  │
-│  deps.py                 │  │                         │
-│  schemas/                │  │  calls core/ directly   │
-│                          │  │  (skips HTTP)           │
-└──────────────────────────┘  └─────────────────────────┘
-         ▲
-         │  HTTP (JSON)
-         ▼
-┌─────────────────────┐
-│   React (future)    │
-│   frontend          │
-└─────────────────────┘
+└──────────────────────────┬──────────────────────────┘
+                           │
+                    calls directly
+                           │
+           ┌───────────────▼───────────────┐
+           │            api/               │
+           │   (FastAPI — HTTP layer)       │
+           │                               │
+           │   routes/analytics.py         │
+           │   routes/apps.py              │
+           │   routes/cohorts.py           │
+           │   routes/data.py              │
+           │   deps.py                     │
+           │   schemas/                    │
+           └───────────────┬───────────────┘
+                           │ HTTP (JSON)
+                           │
+           ┌───────────────▼───────────────┐
+           │          frontend/            │
+           │  React + TypeScript + Vite    │
+           │                               │
+           │  App gallery → app view       │
+           │  Cohort editor                │
+           │  Analytics panels             │
+           └───────────────────────────────┘
 ```
 
 ### `core/` — backend business logic
-The backend. No dependency on FastAPI, Streamlit, or HTTP — pure computation. Both `api/` and `ui/` call into it directly. This is the layer that would be deployed on a server.
+The backend. No dependency on FastAPI or HTTP — pure computation. This is the layer that runs on the server.
 
 ### `api/` — HTTP interface to `core/`
-Exposes `core/` over REST so a decoupled frontend (React) can call it. Handles request validation (Pydantic schemas), dependency injection, routing, and JSON serialisation. Does no computation itself.
+Exposes `core/` over REST. Handles request validation (Pydantic schemas), dependency injection, routing, and JSON serialisation.
 
 | Endpoint | Description |
 |---|---|
+| `GET /health` | Health check |
 | `GET /apps` | List all app configs (card gallery data) |
 | `GET /apps/{id}` | Full app config — cohorts + analysis tabs |
 | `POST /cohorts/resolve` | Resolve cohort definitions against loaded data |
 | `POST /analytics/frequency` | Run frequency analysis |
+| `POST /analytics/demographics` | Run demographics analysis |
+| `POST /analytics/distribution` | Run distribution plots |
 | `GET /data/rdvs` | List available RDVs |
-| `GET /data/rdvs/{rdv}` | Preview an RDV |
+| `GET /data/rdvs/{rdv}` | Column names + preview rows for an RDV |
 
-### `ui/` — temporary Streamlit frontend
-Calls `core/` directly (no HTTP) for speed of development. Will be replaced by React, which will call `api/` instead. Because both the UI and the future React frontend use the same `core/` functions (one directly, one via HTTP), switching to React requires no backend changes.
+### `frontend/` — React UI
+A TypeScript single-page application built with Vite. It calls `api/` over HTTP and renders an interactive analytics explorer.
+
+**Stack:** React 18 · TypeScript · Vite 5 · Tailwind CSS · shadcn-style components · TanStack Query · React Router · react-plotly.js
+
+Key features:
+- App gallery — colour-coded cards with hover animation
+- Per-app analysis view with tabbed panels
+- Cohort editor — build patient cohorts from filter chains, with live patient counts and column dropdowns populated from the API
+- Plotly charts rendered with titles extracted to prevent overlap
+- Cohort colour pills shown across all panels
 
 ---
 
 ## Key concepts
 
 ### RDVs (Research Data Views)
-Named tabular datasets loaded from Parquet or CSV files. Every RDV has a `project_id` column identifying the patient. The standard RDVs are registered in `core/data/rdv.py`.
+Named tabular datasets loaded from Parquet, CSV, or Postgres. Every RDV has a `project_id` column identifying the patient. The standard RDVs are registered in `core/data/rdv.py`.
 
 ### App YAML
-A YAML file that defines a complete analysis for a study cohort — see `app/sample_app.yaml` for an example. It specifies:
+A YAML file that defines a complete analysis for a study — see `app/sample_app.yaml` for an example. It specifies:
 - **`initialCohorts`** — one or more patient cohorts defined by filter chains (e.g. `sex_name == "Female"`)
 - **`analysis`** — tabs and sub-tabs, each pointing to an analytics function and its parameters
 - **`outputs`** — whether to produce an interactive UI and/or a PDF report
 
-The platform config (`config/config.yaml`) points to the directory containing app YAMLs and the RDV data directory. These are kept separate so app configs can live locally while data is loaded from a remote/cloud location.
+The platform config (`config/config.yaml`) points to the directory containing app YAMLs and the RDV data directory.
 
 ### Cohort resolution
-Cohorts are defined in the app YAML as filter chains and resolved against the loaded RDVs at startup. Resolution (`core/cohort/filters.py`) produces a patient list with `entry_date` / `exit_date` windows per patient. Every analytics module then receives the RDV pre-filtered and labelled with cohort names via `apply_cohorts_to_rdv()`.
+Cohorts are defined in the app YAML as filter chains and resolved against the loaded RDVs at startup. Resolution (`core/cohort/filters.py`) produces a patient list with `entry_date` / `exit_date` windows per patient. Every analytics module receives the RDV pre-filtered and labelled with cohort names via `apply_cohorts_to_rdv()`.
 
 ### Analytics modules
 Each module in `core/analytics/` follows the same interface (defined by `AnalysisBase`):
 - `compute()` — runs the analysis, stores results
 - `plot()` — returns a Plotly figure
-- `to_dict()` — returns a JSON-serialisable dict (what the API returns to React)
+- `to_dict()` — returns a JSON-serialisable dict (what the API returns to the frontend)
 
 | Module | Function name | Status |
 |---|---|---|
@@ -106,7 +120,7 @@ Each module in `core/analytics/` follows the same interface (defined by `Analysi
 
 ### Option A — Docker (recommended)
 
-The full stack runs as three containers (frontend, backend, Postgres) orchestrated by Docker Compose. Data is loaded into Postgres once and persists across restarts in a named volume.
+The full stack runs as three containers (React frontend, FastAPI backend, Postgres) orchestrated by Docker Compose.
 
 #### First-time setup
 
@@ -114,7 +128,7 @@ The full stack runs as three containers (frontend, backend, Postgres) orchestrat
 # 1. Configure environment
 cp .env.example .env          # edit POSTGRES_PASSWORD if needed
 
-# 2. Build the image and load RDV data into Postgres
+# 2. Build and load RDV data into Postgres
 docker compose --profile migrate up --exit-code-from migrate migrate
 
 # 3. Start the app
@@ -123,10 +137,10 @@ docker compose up
 
 | Service | URL |
 |---|---|
-| Streamlit UI | http://localhost:8501 |
+| React frontend | http://localhost:3000 |
 | FastAPI (REST + docs) | http://localhost:8000/docs |
 
-Postgres is intentionally not exposed outside the Docker network. To connect directly (e.g. with psql or a GUI tool):
+Postgres is not exposed outside the Docker network. To connect directly:
 ```bash
 docker compose exec db psql -U picture -d picture
 ```
@@ -137,7 +151,7 @@ docker compose exec db psql -U picture -d picture
 docker compose up
 ```
 
-The `postgres_data` volume persists the database between restarts. Only `docker compose down -v` deletes it (the `-v` flag is required — a plain `docker compose down` leaves data intact).
+The `postgres_data` volume persists the database between restarts. Only `docker compose down -v` deletes it.
 
 #### Re-loading data (new CSV/Parquet files)
 
@@ -149,9 +163,14 @@ docker compose --profile migrate up --exit-code-from migrate migrate
 
 ### Option B — Local (development)
 
-#### Install
+#### Install Python dependencies
 ```bash
 pip install -e ".[dev]"
+```
+
+#### Install frontend dependencies
+```bash
+cd frontend && npm install
 ```
 
 #### Enable git hooks
@@ -180,30 +199,25 @@ Load flat files into Postgres once with:
 python scripts/load_to_postgres.py --data-dir data/dmv/csv --db-url $DATABASE_URL
 ```
 
-#### Streamlit UI (temporary)
-```bash
-streamlit run ui/app.py
-```
-Opens at `http://localhost:8501`.
-
 #### API server
 ```bash
 uvicorn api.main:app --reload --port 8000
 ```
 Interactive docs at `http://localhost:8000/docs`.
 
-#### Tests
+#### Frontend dev server
 ```bash
-pytest
+cd frontend && npm run dev
 ```
+Opens at `http://localhost:5173`. API calls are proxied to `http://localhost:8000`.
 
 ---
 
 ## Testing
 
-### Unit and integration tests
+### Python tests
 
-The test suite uses in-memory DataFrames — no database or running server needed.
+The Python test suite uses in-memory DataFrames — no database or running server needed.
 
 ```bash
 # Run all tests
@@ -219,7 +233,7 @@ pytest tests/test_integration.py
 | Test file | What it covers |
 |---|---|
 | `tests/test_integration.py` | Full pipeline: YAML cohort → resolve → analytics → `to_dict()` |
-| `tests/api/test_analytics_routes.py` | FastAPI routes via TestClient (no real data) |
+| `tests/api/test_analytics_routes.py` | FastAPI routes via TestClient + cohort resolve |
 | `tests/core/test_frequency.py` | Frequency analysis computation |
 | `tests/core/test_event_count.py` | Event count distribution |
 | `tests/core/test_event_time.py` | Event timing analysis |
@@ -232,6 +246,21 @@ pytest tests/test_integration.py
 | `tests/core/test_app_config.py` | App YAML parsing |
 | `tests/core/test_rdv_lookups.py` | RDV schema registry |
 
+### Frontend tests
+
+Frontend tests use Vitest + React Testing Library with a jsdom environment. react-plotly.js is stubbed so charts render without a real DOM canvas.
+
+```bash
+cd frontend && npm test
+```
+
+| Test file | What it covers |
+|---|---|
+| `src/api/client.test.ts` | API client — correct field names, error handling |
+| `src/components/PlotlyChart.test.tsx` | Chart title extraction (string/object/absent) |
+| `src/components/CohortSummaryBar.test.tsx` | Loading/empty/resolved states, colour cycling |
+| `src/components/analytics/MethodPanel.test.tsx` | Analytics panel routing by `fn` value |
+
 ### Running tests inside Docker
 
 ```bash
@@ -242,7 +271,7 @@ docker compose exec backend pytest
 
 **Check the API is up:**
 ```bash
-curl -s http://localhost:8000/docs | grep -o "<title>.*</title>"
+curl -s http://localhost:8000/health
 ```
 
 **List available RDVs:**
@@ -257,11 +286,22 @@ curl -s -X POST http://localhost:8000/analytics/frequency \
   -d '{
     "rdv": "dia",
     "event_col": "diag_name",
-    "cohorts": []
+    "cohort_definitions": []
   }' | python -m json.tool
 ```
 
-**Check the Streamlit UI** — open http://localhost:8501 in a browser. The sidebar should show "Data source: PostgreSQL" and the app gallery should load from the configured `app_dir`.
+---
+
+## CI / CD
+
+GitHub Actions runs two parallel jobs on every push and pull request to `main`/`master`:
+
+| Job | Steps |
+|---|---|
+| `test` (Python) | black formatting check · mypy type check · pytest |
+| `frontend-test` | ESLint · tsc type check · vitest · production build |
+
+Both jobs must pass before a PR can be merged.
 
 ---
 
@@ -290,9 +330,17 @@ picture-python/
 │   ├── deps.py              # dependency injection (config, provider factory)
 │   ├── routes/              # endpoint handlers
 │   └── schemas/             # Pydantic request/response models
-├── ui/
-│   ├── app.py               # Streamlit app (home screen + analysis view)
-│   └── pages/               # one file per analytics module
+├── frontend/
+│   ├── src/
+│   │   ├── api/             # typed API client (client.ts + types.ts)
+│   │   ├── components/      # shared UI components (charts, cohort editor, etc.)
+│   │   ├── components/ui/   # base UI primitives (Button, Badge, etc.)
+│   │   ├── pages/           # AppGallery and AppView page components
+│   │   └── test/            # Vitest setup, render helpers, mocks
+│   ├── Dockerfile           # multi-stage build (Node 20 → nginx)
+│   ├── nginx.conf           # serves React + proxies /api/* to backend
+│   ├── vite.config.ts       # build config, path aliases, test config
+│   └── package.json
 ├── db/
 │   └── schema.sql           # Postgres DDL for all RDV tables + indexes
 ├── scripts/
@@ -300,11 +348,16 @@ picture-python/
 ├── tests/
 │   ├── core/                # unit tests for analytics + cohort filters
 │   └── api/                 # integration tests using FastAPI TestClient
-├── Dockerfile               # single image used by all docker compose services
+├── .github/
+│   └── workflows/
+│       └── tests.yml        # CI: parallel Python + frontend jobs
+├── Dockerfile               # Python image used by backend + migrate services
 ├── docker-compose.yml       # backend + frontend + db + migrate (profile)
 ├── .env.example             # environment variable template
 └── pyproject.toml
 ```
+
+---
 
 ## AI Agents
 
@@ -314,15 +367,13 @@ Three specialist agents are defined in `.claude/agents/` and are available in an
 |---|---|
 | `code-reviewer` | "review this file", "check for security issues" |
 | `backend-architect` | "design an endpoint", "how should I structure this module" |
-| `ui-designer` | "improve this component", "plan the React migration" |
+| `ui-designer` | "improve this component", "plan a new page" |
 
 Claude automatically routes to the right agent based on your prompt, or you can call one explicitly: *"Use the code-reviewer agent to check `core/analytics/frequency.py`"*.
 
 ### Automated code review (`review.sh`)
 
 Three agents (security/PHI, architecture, code quality) run in parallel against your changes. The pre-commit hook calls `review.sh --block-on-issues` automatically on every `git commit`, blocking the commit if any BLOCK-level issue is found.
-
-Run manually at any time:
 
 ```bash
 # Review staged changes
