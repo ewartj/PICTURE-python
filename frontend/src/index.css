@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --border: 214 32% 89%;
+    --input: 214 32% 89%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 20%;
+    --muted: 214 32% 93%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 32% 91%;
+    --accent-foreground: 222 47% 20%;
+    --ring: 221 83% 53%;
+    --radius: 0.6rem;
+
+    /* Cohort palette — used for color-coding cohorts */
+    --cohort-0: 221 83% 53%;
+    --cohort-1: 142 71% 45%;
+    --cohort-2: 38 92% 50%;
+    --cohort-3: 291 64% 42%;
+    --cohort-4: 0 72% 51%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 { @apply font-semibold tracking-tight; }
+}
+
+@layer utilities {
+  .cohort-color-0 { color: hsl(var(--cohort-0)); background: hsl(var(--cohort-0) / 0.1); border-color: hsl(var(--cohort-0) / 0.3); }
+  .cohort-color-1 { color: hsl(var(--cohort-1)); background: hsl(var(--cohort-1) / 0.1); border-color: hsl(var(--cohort-1) / 0.3); }
+  .cohort-color-2 { color: hsl(var(--cohort-2)); background: hsl(var(--cohort-2) / 0.1); border-color: hsl(var(--cohort-2) / 0.3); }
+  .cohort-color-3 { color: hsl(var(--cohort-3)); background: hsl(var(--cohort-3) / 0.1); border-color: hsl(var(--cohort-3) / 0.3); }
+  .cohort-color-4 { color: hsl(var(--cohort-4)); background: hsl(var(--cohort-4) / 0.1); border-color: hsl(var(--cohort-4) / 0.3); }
+}
