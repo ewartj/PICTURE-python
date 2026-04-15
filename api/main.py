@@ -23,9 +23,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
 )
 
-_cors_raw = os.environ.get(
-    "PICTURE_CORS_ORIGINS", "http://localhost:8501,http://localhost:3000"
-)
+_cors_raw = os.environ.get("PICTURE_CORS_ORIGINS", "http://localhost:8501,http://localhost:3000")
 _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
 
 app = FastAPI(

@@ -30,7 +30,7 @@ class ResolvedCohortSchema(BaseModel):
 
 class CohortResolveRequest(BaseModel):
     cohorts: list[CohortDefinitionSchema]
-    data_dir: str
+    data_dir: str = ""  # unused — data is loaded from platform config
 
 
 class CohortResolveResponse(BaseModel):

@@ -107,3 +107,70 @@ def test_frequency_unknown_rdv_returns_404(client):
         },
     )
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Cohort resolve
+# ---------------------------------------------------------------------------
+
+
+def test_cohort_resolve_returns_counts(client):
+    """POST /cohorts/resolve returns n_patients for each cohort definition."""
+    r = client.post(
+        "/cohorts/resolve",
+        json={
+            "cohorts": [
+                {
+                    "label": "Female",
+                    "config": [
+                        {
+                            "type": "filter",
+                            "rdv": "pde",
+                            "column": "sex_name",
+                            "val": ["Female"],
+                            "inclusion": "ever",
+                            "query_type": "str_matches",
+                        }
+                    ],
+                },
+                {
+                    "label": "Male",
+                    "config": [
+                        {
+                            "type": "filter",
+                            "rdv": "pde",
+                            "column": "sex_name",
+                            "val": ["Male"],
+                            "inclusion": "ever",
+                            "query_type": "str_matches",
+                        }
+                    ],
+                },
+            ]
+        },
+    )
+    assert r.status_code == 200
+    cohorts = {c["label"]: c for c in r.json()["cohorts"]}
+    assert cohorts["Female"]["n_patients"] == 2  # P001, P003
+    assert cohorts["Male"]["n_patients"] == 1  # P002
+
+
+def test_cohort_resolve_no_filters_returns_200(client):
+    """An empty filter config is valid — the endpoint must not error."""
+    r = client.post(
+        "/cohorts/resolve",
+        json={"cohorts": [{"label": "All", "config": []}]},
+    )
+    assert r.status_code == 200
+    cohorts = r.json()["cohorts"]
+    assert cohorts[0]["label"] == "All"
+    assert "n_patients" in cohorts[0]
+
+
+def test_cohort_resolve_data_dir_optional(client):
+    """data_dir is no longer required — omitting it must not cause a 422."""
+    r = client.post(
+        "/cohorts/resolve",
+        json={"cohorts": [{"label": "All", "config": []}]},
+    )
+    assert r.status_code != 422

@@ -78,23 +78,13 @@ services:
       retries: 5
       start_period: 15s
 
-  # ── Streamlit frontend ─────────────────────────────────────────────────────
+  # ── React frontend ─────────────────────────────────────────────────────────
   frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
-    image: picture-app
-    command: >
-      streamlit run ui/app.py
-        --server.address 0.0.0.0
-        --server.port 8501
-        --server.headless true
-    environment:
-      PICTURE_BACKEND: postgres
-      DATABASE_URL: ${DATABASE_URL:-postgresql://picture:secret@db:5432/picture}
-      PICTURE_APP_DIR: /app/app
     ports:
-      - "8501:8501"
+      - "3000:80"
     depends_on:
       backend:
         condition: service_healthy
